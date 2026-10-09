@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard estadístico de KPIs</title>
+<style>
+:root{--bg:#f3f5f7;--card:#fff;--ink:#16202b;--mute:#5d6b7a;--line:#d8dee5;--acc:#0b6b8a;--good:#dff3e6;--goodink:#14653a;--warn:#fdeccf;
+--s0:#1f77b4;--s1:#e08a1e;--s2:#2e9e5b;--s3:#b23a7f;--s4:#6b5bd2;--s5:#8a6d3b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10161d;--card:#18212b;--ink:#e6edf3;--mute:#94a3b3;--line:#2b3846;--acc:#5cc0df;--good:#173a27;--goodink:#7fdcA5;--warn:#4a3813}}
+:root[data-theme="dark"]{--bg:#10161d;--card:#18212b;--ink:#e6edf3;--mute:#94a3b3;--line:#2b3846;--acc:#5cc0df;--good:#173a27;--goodink:#7fdca5;--warn:#4a3813}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:16px}
+h1{font-size:1.4rem;margin:8px 0 2px}h2{font-size:1.05rem;margin:0 0 10px}
+.sub{color:var(--mute);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 12px;font:inherit;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:#fff}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+label{display:flex;flex-direction:column;font-size:.8rem;color:var(--mute);gap:3px;flex:1;min-width:130px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px}
+textarea{width:100%;min-height:150px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.85rem;resize:vertical}
+button.b{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer}
+button.b:hover{border-color:var(--acc)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.hint{font-size:.8rem;color:var(--mute);margin:6px 0 0}
+.err{color:#c0392b;font-size:.85rem}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
+th{font-weight:600}
+td.best{background:var(--good);color:var(--goodink);font-weight:600}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.ins{margin:0;padding-left:18px}.ins li{margin:3px 0}
+svg{width:100%;height:auto;display:block}
+svg text{fill:var(--mute);font:11px system-ui,sans-serif}
+svg .ax{stroke:var(--line)}
+.cap{font-size:.82rem;color:var(--mute);margin:6px 0 0}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;margin-bottom:6px}
+.num{width:72px;text-align:right}.j{width:100%;min-width:200px}td span.cap{font-weight:400}
+</style>
+</head>
+<body>
+<main>
+<h1>Dashboard estadístico de KPIs</h1>
+
+<div class="card">
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="row">
+    <label>Nombre del KPI<input id="kname"></label>
+    <label>Unidad<input id="kunit" placeholder="ms, %, Mbps"></label>
+    <label>¿Qué es mejor?<select id="kbetter"><option value="low">Menor es mejor</option><option value="high">Mayor es mejor</option></select></label>
+  </div>
+  <textarea id="raw" spellcheck="false" aria-label="Datos crudos"></textarea>
+  <p class="hint">Primera fila: nombres de cada sistema. Una columna por sistema, un dato por fila. Acepta pegar desde Excel (tabulador), CSV o punto y coma. Si la primera columna es «Día» o similar, se ignora.</p>
+  <div class="row" style="margin:10px 0 0">
+    <button class="b" id="addk">Agregar KPI</button>
+    <button class="b" id="delk">Eliminar este KPI</button>
+    
+  </div>
+  <div class="err" id="err"></div>
+</div>
+
+<div id="out"></div>
+<div id="dec"></div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const COLORS=['--s0','--s1','--s2','--s3','--s4','--s5'];
+const col=i=>`var(${COLORS[i%COLORS.length]})`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let kpis=[],cur=0;
+
+/* ---------- estadística ---------- */
+const sum=a=>a.reduce((x,y)=>x+y,0);
+function pct(s,p){const h=(s.length-1)*p,l=Math.floor(h);return s[l]+(h-l)*((s[l+1]??s[l])-s[l]);}
+function stats(d){
+  const n=d.length;if(!n)return null;
+  const s=[...d].sort((a,b)=>a-b),m=sum(d)/n;
+  const v=n>1?sum(d.map(x=>(x-m)**2))/(n-1):NaN,sd=Math.sqrt(v);
+  const f=new Map();d.forEach(x=>f.set(x,(f.get(x)||0)+1));
+  let mo=null,mf=1;[...f].sort((a,b)=>a[0]-b[0]).forEach(([x,c])=>{if(c>mf){mf=c;mo=x;}});
+  const q1=pct(s,.25),q3=pct(s,.75),iqr=q3-q1,lo=q1-1.5*iqr,hi=q3+1.5*iqr;
+  const out=d.map((x,i)=>({x,i})).filter(o=>o.x<lo||o.x>hi);
+  const inl=s.filter(x=>x>=lo&&x<=hi);
+  return{n,mean:m,med:pct(s,.5),mode:mo,sd,v,min:s[0],max:s[n-1],range:s[n-1]-s[0],q1,q3,iqr,cv:m?sd/Math.abs(m)*100:NaN,
+    out,wl:inl[0],wh:inl[inl.length-1]};
+}
+const fx=(x,k=2)=>Number.isFinite(x)?x.toLocaleString('es',{minimumFractionDigits:k,maximumFractionDigits:k}):'—';
+
+/* ---------- lectura de datos ---------- */
+function parse(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());if(!lines.length)return[];
+  const h=lines[0],sep=h.includes('\t')?'\t':h.includes(';')?';':h.includes(',')?',':/\s{2,}|\s/;
+  const rows=lines.map(l=>l.split(sep).map(s=>s.trim()));
+  const num=s=>parseFloat((sep===','?s:s.replace(',','.')));
+  const hasH=rows[0].some(c=>c!==''&&isNaN(num(c)));
+  let names=hasH?rows.shift():null,start=0;
+  if(names&&/^(d[ií]a|day|n[°ºo]?|id|#|muestra|fecha|obs\w*)$/i.test(names[0])&&names.length>1)start=1;
+  else if(!names&&rows.length&&rows[0].length>1&&rows.every((r,i)=>+r[0]===i+1))start=1;
+  const nc=Math.max(...rows.map(r=>r.length),names?names.length:0);
+  const out=[];
+  for(let c=start;c<nc;c++){
+    out.push({name:(names&&names[c])||`Sistema ${c-start+1}`,data:rows.map(r=>num(r[c]??'')).filter(Number.isFinite)});
+  }
+  return out.filter(s=>s.data.length);
+}
+
+/* ---------- muestra ---------- */
+function gauss(m,s){let u=0,v=0;while(!u)u=Math.random();v=Math.random();return m+s*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function sample(){
+  const mk=(m,s,spikes)=>{const a=Array.from({length:30},()=>+gauss(m,s).toFixed(1));spikes.forEach(([i,v])=>a[i]=v);return a;};
+  const L=[mk(38,4,[]),mk(30,9,[[5,118.4],[17,96.7]]),mk(24,2.5,[[14,142.3]])];
+  const V=[mk(92,3,[]),mk(88,8,[[5,31.5],[17,44.2]]),mk(95,2,[[14,38.9]])];
+  const P=[0,1,2].map(k=>Array.from({length:30},(_,i)=>+Math.abs(gauss([.6,1.5,.25][k],[.2,.8,.1][k])).toFixed(2)));
+  P[1][5]=7.8;P[1][17]=5.4;P[2][14]=6.1;
+  const mkKpi=(name,unit,better,cols)=>({name,unit,better,raw:['Día\tProveedor A\tProveedor B\tProveedor C',...Array.from({length:30},(_,i)=>`${i+1}\t${cols[0][i]}\t${cols[1][i]}\t${cols[2][i]}`)].join('\n')});
+  kpis=[mkKpi('Latencia','ms','low',L),mkKpi('Velocidad de descarga','Mbps','high',V),mkKpi('Pérdida de paquetes','%','low',P)];
+  cur=0;drawTabs();load();
+}
+
+/* ---------- gráficos SVG ---------- */
+const W=640,H=310,M={l:62,r:14,t:16,b:56};
+const axT=(xl,yl)=>`<text x="${M.l+(W-M.l-M.r)/2}" y="${H-6}" text-anchor="middle" style="fill:var(--ink)">${esc(xl)}</text><text transform="translate(14 ${M.t+(H-M.t-M.b)/2}) rotate(-90)" text-anchor="middle" style="fill:var(--ink)">${esc(yl)}</text>`;
+const yl=k=>k.name+(k.unit?` (${k.unit})`:'');
+function scale(min,max){
+  if(min===max){min-=1;max+=1;}
+  const step=(max-min)/4,mag=10**Math.floor(Math.log10(step)),nice=[1,2,2.5,5,10].find(k=>k*mag>=step)*mag;
+  const a=Math.floor(min/nice)*nice,b=Math.ceil(max/nice)*nice,t=[];
+  for(let v=a;v<=b+nice/1e6;v+=nice)t.push(+v.toFixed(10));
+  return{a,b,t};
+}
+function frame(sc){
+  const y=v=>M.t+(H-M.t-M.b)*(1-(v-sc.a)/(sc.b-sc.a));
+  const g=sc.t.map(v=>`<line class="ax" x1="${M.l}" x2="${W-M.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${M.l-6}" y="${y(v)+4}" text-anchor="end">${fx(v,sc.b-sc.a<5?1:0)}</text>`).join('');
+  return{y,g};
+}
+function barChart(ser,ss,k){
+  const mx=Math.max(...ss.map(s=>s.mean));const sc=scale(0,mx*1.1),{y,g}=frame(sc);
+  const bw=(W-M.l-M.r)/ser.length;
+  const b=ser.map((s,i)=>{const x=M.l+bw*i+bw*.2,w=bw*.6,yy=y(ss[i].mean);
+    return`<rect x="${x}" y="${yy}" width="${w}" height="${y(0)-yy}" rx="3" fill="${col(i)}"/><text x="${x+w/2}" y="${yy-5}" text-anchor="middle" style="fill:var(--ink);font-weight:600">${fx(ss[i].mean)}</text><text x="${x+w/2}" y="${H-30}" text-anchor="middle">${esc(s.name)}</text>`}).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Media por sistema">${g}${b}${axT('Sistema','Media de '+yl(k))}</svg>`;
+}
+function lineChart(ser,ss,k){
+  const all=ser.flatMap(s=>s.data),sc=scale(Math.min(...all),Math.max(...all)),{y,g}=frame(sc);
+  const N=Math.max(...ser.map(s=>s.data.length)),x=i=>M.l+(W-M.l-M.r)*(N>1?i/(N-1):.5);
+  const step=Math.ceil(N/10);let xt='';for(let i=0;i<N;i+=step)xt+=`<text x="${x(i)}" y="${H-30}" text-anchor="middle">${i+1}</text>`;
+  const l=ser.map((s,k)=>`${s.data.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="3.2" fill="${col(k)}" fill-opacity=".8"/>`).join('')}`+
+    ss[k].out.map(o=>`<circle cx="${x(o.i)}" cy="${y(o.x)}" r="7" fill="none" stroke="${col(k)}" stroke-width="2"/><text x="${x(o.i)+10}" y="${y(o.x)+4}" style="fill:var(--ink);font-size:10px">${fx(o.x,1)}</text>`).join('')).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Diagrama de dispersión">${g}${xt}${l}${axT('Observación (n.º de día / muestra)',yl(k))}</svg>`;
+}
+function boxChart(ser,ss,k){
+  const all=ser.flatMap(s=>s.data),sc=scale(Math.min(...all),Math.max(...all)),{y,g}=frame(sc);
+  const bw=(W-M.l-M.r)/ser.length;
+  const b=ser.map((s,i)=>{const t=ss[i],cx=M.l+bw*(i+.5),w=Math.min(70,bw*.5),c=col(i);
+    return`<line x1="${cx}" x2="${cx}" y1="${y(t.wl)}" y2="${y(t.wh)}" stroke="${c}" stroke-width="1.5"/>
+<line x1="${cx-w/4}" x2="${cx+w/4}" y1="${y(t.wl)}" y2="${y(t.wl)}" stroke="${c}" stroke-width="1.5"/><line x1="${cx-w/4}" x2="${cx+w/4}" y1="${y(t.wh)}" y2="${y(t.wh)}" stroke="${c}" stroke-width="1.5"/>
+<rect x="${cx-w/2}" y="${y(t.q3)}" width="${w}" height="${Math.max(1,y(t.q1)-y(t.q3))}" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="1.5"/>
+<line x1="${cx-w/2}" x2="${cx+w/2}" y1="${y(t.med)}" y2="${y(t.med)}" stroke="${c}" stroke-width="3"/>
+<circle cx="${cx}" cy="${y(t.mean)}" r="3.5" fill="var(--card)" stroke="${c}" stroke-width="1.5"/>
+${t.out.map(o=>`<circle cx="${cx}" cy="${y(o.x)}" r="3.5" fill="${c}"/>`).join('')}
+${[[t.q3,'Q3'],[t.med,'Med'],[t.q1,'Q1']].map(([v,n])=>`<text x="${cx+w/2+5}" y="${y(v)+4}" style="font-size:10px">${n} ${fx(v,1)}</text>`).join('')}
+<text x="${cx}" y="${H-30}" text-anchor="middle">${esc(s.name)}</text>`}).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Diagrama de caja y bigote">${g}${b}${axT('Sistema',yl(k))}</svg>`;
+}
+
+/* ---------- render ---------- */
+const ROWS=[['Media','mean','a'],['Mediana','med','a'],['Moda','mode'],['Desviación estándar','sd','v'],['Varianza','v'],['Mínimo','min'],['Máximo','max'],['Rango','range','v'],
+ ['Percentil 25 (Q1)','q1'],['Percentil 75 (Q3)','q3'],['Rango intercuartílico','iqr','v'],['Coef. de variación (%)','cv','v'],['Valores atípicos (1.5·IQR)','nout']];
+function render(){renderMain();renderDec();}
+function renderMain(){
+  const k=kpis[cur],out=document.getElementById('out'),err=document.getElementById('err');
+  const ser=parse(k.raw);err.textContent='';
+  if(!ser.length){out.innerHTML='<div class="card"><p class="hint">Aún no hay datos. Pega una tabla o pulsa «Cargar ejemplo».</p></div>';return;}
+  const ss=ser.map(s=>stats(s.data));ss.forEach(t=>t.nout=t.out.length);
+  const u=k.unit?` (${esc(k.unit)})`:'';
+  const best=(key,dir)=>{const vals=ss.map(t=>t[key]);const t=dir==='min'?Math.min(...vals.filter(Number.isFinite)):Math.max(...vals.filter(Number.isFinite));return vals.indexOf(t);};
+  const goal=k.better==='low'?'min':'max';
+  const bestIdx={};ROWS.forEach(r=>{if(r[2]==='a')bestIdx[r[1]]=best(r[1],goal);if(r[2]==='v')bestIdx[r[1]]=best(r[1],'min');});
+  const head=`<tr><th>Estadístico</th>${ser.map((s,i)=>`<th><span class="dot" style="background:${col(i)}"></span>${esc(s.name)}</th>`).join('')}</tr>`;
+  const body=ROWS.map(r=>`<tr><td>${r[0]}</td>${ss.map((t,i)=>{const v=t[r[1]];return`<td class="${bestIdx[r[1]]===i&&ser.length>1?'best':''}">${r[1]==='nout'?v:fx(v)}</td>`}).join('')}</tr>`).join('');
+  const ins=[];
+  if(ser.length>1){
+    ins.push(`Mejor promedio: <b>${esc(ser[bestIdx.mean].name)}</b> (${fx(ss[bestIdx.mean].mean)}${esc(k.unit)}).`);
+    const cvI=bestIdx.cv;ins.push(`Más estable (menor CV): <b>${esc(ser[cvI].name)}</b> (${fx(ss[cvI].cv)} %).`+(cvI===bestIdx.mean?' Coincide con el mejor promedio.':' No coincide con el mejor promedio.'));
+  }
+  ser.forEach((s,i)=>{const t=ss[i];if(t.nout)ins.push(`<b>${esc(s.name)}</b>: ${t.nout} valor(es) atípico(s) (obs. ${t.out.map(o=>o.i+1).join(', ')}). Media ${fx(t.mean)} vs. mediana ${fx(t.med)}: ${Math.abs(t.mean-t.med)>t.sd*.15?'la media está sesgada por los extremos.':'diferencia pequeña.'}`);});
+  if(!ins.length)ins.push('Sin valores atípicos detectados.');
+  const vt=(rows)=>`<div class="tw"><table><tr><th>Valor graficado</th>${ser.map(s=>`<th>${esc(s.name)}</th>`).join('')}</tr>${rows.map(r=>`<tr><td>${r[0]}</td>${ss.map(t=>`<td>${r[1](t)}</td>`).join('')}</tr>`).join('')}</table></div>`;
+  const legend=`<div class="legend">${ser.map((s,i)=>`<span><span class="dot" style="background:${col(i)}"></span>${esc(s.name)} (n=${ss[i].n})</span>`).join('')}</div>`;
+  out.innerHTML=`
+<div class="card"><h2>Resumen · ${esc(k.name)}${u}</h2><ul class="ins">${ins.map(i=>`<li>${i}</li>`).join('')}</ul>
+<p class="cap">Verde = mejor valor de la fila (${k.better==='low'?'menor':'mayor'} es mejor en media y mediana; menor en dispersión).</p></div>
+<div class="card"><h2>Estadísticos descriptivos</h2><div class="tw"><table>${head}${body}</table></div>
+<p class="cap">Desviación y varianza muestrales (n−1); percentiles con método inclusivo, igual que PERCENTIL.INC de Excel.</p></div>
+<div class="card"><h2>Media de ${esc(k.name)}${u} por sistema</h2>${barChart(ser,ss,k)}${vt([['Media',t=>fx(t.mean)]])}<p class="cap">Compara el promedio de ${esc(k.name)}${u} entre sistemas.</p></div>
+<div class="card"><h2>Dispersión de ${esc(k.name)}${u} por observación y sistema</h2>${legend}${lineChart(ser,ss,k)}<p class="cap">Cada punto es una observación; los aros marcan valores atípicos y su altura muestra la variabilidad de cada sistema.</p>${vt([['Observaciones (n)',t=>t.n],['Mínimo',t=>fx(t.min)],['Máximo',t=>fx(t.max)]])}</div>
+<div class="card"><h2>Distribución de ${esc(k.name)}${u} · caja y bigote</h2>${legend}${boxChart(ser,ss,k)}<p class="cap">Caja = Q1–Q3, línea gruesa = mediana, círculo blanco = media, puntos = atípicos. Bigotes: último dato dentro de 1.5·IQR.</p>${vt([['Límite inferior bigote',t=>fx(t.wl)],['Q1',t=>fx(t.q1)],['Mediana',t=>fx(t.med)],['Q3',t=>fx(t.q3)],['Límite superior bigote',t=>fx(t.wh)],['Media',t=>fx(t.mean)]])}</div>`;
+}
+
+/* ---------- interfaz ---------- */
+function drawTabs(){
+  const t=document.getElementById('tabs');
+  t.innerHTML=kpis.map((k,i)=>`<button class="tab" role="tab" aria-selected="${i===cur}" data-i="${i}">${esc(k.name||'KPI '+(i+1))}</button>`).join('');
+}
+function load(){
+  const k=kpis[cur];
+  kname.value=k.name;kunit.value=k.unit;kbetter.value=k.better;raw.value=k.raw;render();
+}
+tabs.onclick=e=>{const b=e.target.closest('.tab');if(!b)return;cur=+b.dataset.i;drawTabs();load();};
+kname.oninput=()=>{kpis[cur].name=kname.value;drawTabs();render();};
+kunit.oninput=()=>{kpis[cur].unit=kunit.value;render();};
+kbetter.onchange=()=>{kpis[cur].better=kbetter.value;render();};
+raw.oninput=()=>{kpis[cur].raw=raw.value;render();};
+addk.onclick=()=>{kpis.push({name:'Nuevo KPI',unit:'',better:'low',raw:''});cur=kpis.length-1;drawTabs();load();};
+delk.onclick=()=>{if(kpis.length<2){kpis[0]={name:'KPI 1',unit:'',better:'low',raw:''};}else{kpis.splice(cur,1);cur=Math.max(0,cur-1);}drawTabs();load();};
+/* ---------- matriz de decisión ---------- */
+let dk=[],dn=[];
+const an=k=>{const ser=parse(k.raw);if(!ser.length)return null;const ss=ser.map(s=>stats(s.data));ss.forEach(t=>t.nout=t.out.length);return{ser,ss};};
+function matrix(){
+  const ks=kpis.map(k=>({k,a:an(k)})).filter(o=>o.a);
+  const nS=Math.max(0,...ks.map(o=>o.a.ser.length));
+  const names=Array.from({length:nS},(_,j)=>ks.find(o=>o.a.ser[j]).a.ser[j].name);
+  return{ks,names};
+}
+const wOf=(k,i,n)=>{if(k.w!=null)return k.w;const b=Math.floor(100/n);return i===0?100-b*(n-1):b;};
+function auto(k,a,j){const m=a.ss.map(t=>t.mean),mn=Math.min(...m),mx=Math.max(...m);if(mx===mn)return 10;
+  const f=k.better==='low'?(mx-m[j])/(mx-mn):(m[j]-mn)/(mx-mn);return +(1+9*f).toFixed(1);}
+const scOf=(k,a,j)=>k.sc?.[j]??auto(k,a,j);
+function totals(){return dn.map((_,j)=>{let sw=0,sc=0;dk.forEach((o,i)=>{if(!o.a.ser[j])return;const w=wOf(o.k,i,dk.length);sw+=w;sc+=w*scOf(o.k,o.a,j);});return sw?sc/sw:0;});}
+function renderDec(){
+  const el=document.getElementById('dec'),m=matrix();dk=m.ks;dn=m.names;
+  if(!dk.length){el.innerHTML='';return;}
+  const rows=dk.map((o,i)=>`<tr><td>${esc(o.k.name)}${o.k.unit?` (${esc(o.k.unit)})`:''}<br><span class="cap">${o.k.better==='low'?'menor':'mayor'} es mejor</span></td>
+<td><input class="num" type="number" min="0" max="100" data-w="${i}" value="${wOf(o.k,i,dk.length)}" aria-label="Peso ${esc(o.k.name)}"></td>
+${dn.map((_,j)=>o.a.ser[j]?`<td><input class="num" type="number" min="1" max="10" step="0.1" data-i="${i}" data-j="${j}" value="${scOf(o.k,o.a,j)}" aria-label="Calificación ${esc(dn[j])}"></td>`:'<td>—</td>').join('')}</tr>`).join('');
+  el.innerHTML=`<div class="card"><h2>Matriz de decisión ponderada</h2>
+<p class="cap" style="margin:0 0 8px">Asigna un peso (%) a cada KPI. Las calificaciones (1 = peor, 10 = mejor) se sugieren según la media de cada sistema; puedes editarlas.</p>
+<div class="tw"><table><tr><th>KPI</th><th>Peso (%)</th>${dn.map(n=>`<th>Calif. ${esc(n)}</th>`).join('')}</tr>${rows}
+<tr><td><b>Suma de pesos</b></td><td id="wsum"></td><td colspan="${dn.length}"></td></tr>
+<tr><td><b>Puntaje ponderado total</b></td><td></td>${dn.map((_,j)=>`<td data-t="${j}"></td>`).join('')}</tr></table></div>
+<p style="margin:10px 0 6px"><b>Sistema recomendado:</b> <span id="rec"></span></p>
+<div class="row" style="margin:10px 0 0"><button class="b" id="bpdf">Descargar PDF</button><button class="b" id="bxls">Descargar Excel</button></div>
+<div class="cap" id="msg" role="status"></div></div>`;
+  upd();
+}
+function upd(){
+  const t=totals(),sum=dk.reduce((s,o,i)=>s+wOf(o.k,i,dk.length),0),ws=document.getElementById('wsum');
+  ws.textContent=sum+' %'+(sum===100?'':' (deben sumar 100)');ws.style.background=sum===100?'':'var(--warn)';
+  document.querySelectorAll('[data-t]').forEach(c=>c.innerHTML=`<b>${fx(t[+c.dataset.t])}</b>`);
+  const b=t.indexOf(Math.max(...t));document.getElementById('rec').textContent=t.length?`${dn[b]} (${fx(t[b])} de 10)`:'—';
+}
+document.getElementById('dec').addEventListener('input',e=>{
+  const t=e.target,v=parseFloat(t.value),ok=Number.isFinite(v);
+  if(t.dataset.w!=null)dk[+t.dataset.w].k.w=ok?Math.max(0,v):undefined;
+  else if(t.dataset.i!=null){const k=dk[+t.dataset.i].k;k.sc=k.sc||[];if(ok)k.sc[+t.dataset.j]=Math.min(10,Math.max(1,v));else delete k.sc[+t.dataset.j];}
+  upd();
+});
+document.getElementById('dec').addEventListener('click',e=>{if(e.target.id==='bpdf')exportPdf();if(e.target.id==='bxls')exportXls();});
+
+/* ---------- exportar ---------- */
+const say=t=>{const m=document.getElementById('msg');if(m)m.textContent=t;};
+async function dl(filename,data){
+  try{
+    const type=filename.endsWith('.pdf')?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const blob=data instanceof Blob?data:new Blob([data],{type});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);say('Archivo listo.');
+  }catch(e){say('No se pudo descargar el archivo.');}
+}
+const recTxt=()=>{const t=totals();return t.length?dn[t.indexOf(Math.max(...t))]:'';};
+function exportXls(){
+  if(!window.XLSX){say('No se pudo cargar la librería de Excel.');return;}
+  const wb=XLSX.utils.book_new(),E=XLSX.utils,sn=[];
+  dk.forEach((o,i)=>{
+    const name=`D${i+1}_${o.k.name.replace(/[\\\/?*\[\]:]/g,'')}`.slice(0,31);sn.push(name);
+    const N=Math.max(...o.a.ser.map(s=>s.data.length));
+    const aoa=[['Obs',...o.a.ser.map(s=>s.name)],...Array.from({length:N},(_,r)=>[r+1,...o.a.ser.map(s=>s.data[r]??null)])];
+    E.book_append_sheet(wb,E.aoa_to_sheet(aoa),name);
+  });
+  const ws={},F=[['Media',R=>`AVERAGE(${R})`],['Mediana',R=>`MEDIAN(${R})`],['Moda',R=>`IFERROR(MODE(${R}),"—")`],['Desviación estándar (muestral)',R=>`STDEV(${R})`],['Varianza (muestral)',R=>`VAR(${R})`],['Mínimo',R=>`MIN(${R})`],['Máximo',R=>`MAX(${R})`],['Rango (Máx - Mín)',R=>`MAX(${R})-MIN(${R})`],['Percentil 25 (Q1)',R=>`PERCENTILE(${R},0.25)`],['Percentil 75 (Q3)',R=>`PERCENTILE(${R},0.75)`],['Coeficiente de variación (%)',R=>`STDEV(${R})/AVERAGE(${R})*100`]];
+  let r=0,mc=0;const put=(r,c,cell)=>{ws[E.encode_cell({r,c})]=cell;mc=Math.max(mc,c);};
+  dk.forEach((o,i)=>{
+    put(r++,0,{t:'s',v:`${o.k.name}${o.k.unit?' ('+o.k.unit+')':''}`});
+    put(r,0,{t:'s',v:'Estadístico'});o.a.ser.forEach((s,j)=>put(r,j+1,{t:'s',v:s.name}));r++;
+    F.forEach(([lab,f])=>{put(r,0,{t:'s',v:lab});o.a.ser.forEach((s,j)=>{const c=E.encode_col(j+1);put(r,j+1,{t:'n',f:f(`'${sn[i]}'!${c}2:${c}${s.data.length+1}`)});});r++;});
+    r++;
+  });
+  ws['!ref']=E.encode_range({s:{r:0,c:0},e:{r:r,c:mc}});ws['!cols']=[{wch:32},{wch:16},{wch:16},{wch:16}];
+  E.book_append_sheet(wb,ws,'Estadisticos');
+  const n=dk.length,t=totals(),pad=()=>Array(dn.length+2).fill('');
+  const aoa=[['KPI','Peso (%)',...dn.map(x=>'Calificación '+x)],
+    ...dk.map((o,i)=>[o.k.name,wOf(o.k,i,n),...dn.map((_,j)=>o.a.ser[j]?+scOf(o.k,o.a,j):'')]),
+    ['Suma de pesos (debe ser 100)',...pad().slice(1)],['Puntaje ponderado total',...pad().slice(1)],['Sistema recomendado:',recTxt()]];
+  const wd=E.aoa_to_sheet(aoa);
+  wd['B'+(n+2)]={t:'n',f:`SUM(B2:B${n+1})`};
+  dn.forEach((_,j)=>{const c=E.encode_col(j+2);wd[c+(n+3)]={t:'n',f:`SUMPRODUCT($B$2:$B$${n+1},${c}2:${c}${n+1})/SUM($B$2:$B$${n+1})`};});
+  wd['!cols']=[{wch:32},{wch:10},...dn.map(()=>({wch:18}))];
+  E.book_append_sheet(wb,wd,'Decision');
+  dl('analisis_kpis.xlsx',XLSX.write(wb,{bookType:'xlsx',type:'array'}));
+}
+const LT={'--s0':'#1f77b4','--s1':'#e08a1e','--s2':'#2e9e5b','--s3':'#b23a7f','--s4':'#6b5bd2','--s5':'#8a6d3b','--ink':'#16202b','--mute':'#5d6b7a','--line':'#d8dee5','--card':'#ffffff'};
+function png(svg){return new Promise((res,rej)=>{
+  const s=svg.replace(/var\((--[\w-]+)\)/g,(_,v)=>LT[v]||'#000').replace('<svg ',`<svg xmlns="http://www.w3.org/2000/svg" width="${W*2}" height="${H*2}" `)
+    .replace(/(<svg[^>]*>)/,'$1<style>text{fill:#5d6b7a;font:11px Arial,sans-serif}.ax{stroke:#d8dee5}</style>');
+  const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=W*2;c.height=H*2;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0);res(c.toDataURL('image/png'));};
+  im.onerror=rej;im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s);});}
+async function exportPdf(){
+  if(!window.jspdf){say('No se pudo cargar la librería de PDF.');return;}
+  say('Generando PDF…');
+  try{
+    const d=new window.jspdf.jsPDF({unit:'pt',format:'letter'}),X=40,CW=532,H1=(t,y,sz=11)=>{d.setFont('helvetica','bold');d.setFontSize(sz);d.text(t,X,y);d.setFont('helvetica','normal');};
+    H1('Informe estadístico de KPIs',48,16);d.setFontSize(9);d.text(new Date().toLocaleDateString('es'),X,62);
+    const img=async(svg,y,w,title)=>{H1(title,y,10);d.addImage(await png(svg),'PNG',X,y+6,w,w*H/W);};
+    let first=true;
+    for(const {k,a} of dk){
+      const u=k.unit?` (${k.unit})`:'';let y=first?90:50;if(!first)d.addPage();first=false;
+      H1(`${k.name}${u} - ${k.better==='low'?'menor es mejor':'mayor es mejor'}`,y,12);y+=16;
+      const lw=170,cw=(CW-lw)/a.ser.length;d.setFontSize(8.5);d.setDrawColor(200);
+      H1('Estadístico',y,8.5);a.ser.forEach((s,j)=>d.text(String(s.name),X+lw+cw*(j+1)-4,y,{align:'right'}));y+=5;
+      ROWS.forEach(r=>{y+=12;d.line(X,y-9,X+CW,y-9);d.setFontSize(8.5);d.text(r[0],X,y);a.ss.forEach((t,j)=>d.text(r[1]==='nout'?String(t.nout):fx(t[r[1]]),X+lw+cw*(j+1)-4,y,{align:'right'}));});
+      y+=16;
+      await img(barChart(a.ser,a.ss,k),y,400,`Media de ${k.name}${u} por sistema`);y+=6+400*H/W+18;
+      await img(lineChart(a.ser,a.ss,k),y,400,`Dispersión de ${k.name}${u} por observación`);
+      d.addPage();
+      await img(boxChart(a.ser,a.ss,k),50,470,`Distribución de ${k.name}${u} - caja y bigote`);
+    }
+    d.addPage();H1('Matriz de decisión ponderada',50,14);
+    const cw=[200,60,...dn.map(()=>Math.min(90,(CW-260)/dn.length))],jw=0;let y=72;d.setFontSize(8);
+    const cell=(txts,bold)=>{const L=txts.map((t,c)=>d.splitTextToSize(String(t),(c<cw.length?cw[c]:jw)-6));const h=Math.max(...L.map(l=>l.length))*10+6;
+      d.setFont('helvetica',bold?'bold':'normal');let x=X;L.forEach((l,c)=>{d.text(l,x+2,y+9);x+=c<cw.length?cw[c]:jw;});d.line(X,y+h,X+CW,y+h);y+=h;};
+    cell(['KPI','Peso',...dn.map(n=>'Calif. '+n)],true);
+    dk.forEach((o,i)=>cell([o.k.name,wOf(o.k,i,dk.length)+'%',...dn.map((_,j)=>o.a.ser[j]?scOf(o.k,o.a,j):'-')],false));
+    const t=totals();cell(['Puntaje ponderado','',...t.map(v=>fx(v))],true);
+    y+=20;H1('Sistema recomendado: '+recTxt(),y,11);
+    await dl('informe_kpis.pdf',d.output('blob'));
+  }catch(e){say('No se pudo generar el PDF.');}
+}
+
+
+sample();
+</script>
+</body>
+</html>
