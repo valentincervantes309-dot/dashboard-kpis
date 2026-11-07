@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -43,12 +44,29 @@ svg .ax{stroke:var(--line)}
 .cap{font-size:.82rem;color:var(--mute);margin:6px 0 0}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;margin-bottom:6px}
 .num{width:72px;text-align:right}.j{width:100%;min-width:200px}td span.cap{font-weight:400}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.chip{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.82rem;color:var(--mute)}.chip.ok{background:var(--good);color:var(--goodink);border-color:transparent}
+[hidden]{display:none!important}
+.steps{margin:0;padding-left:22px}.steps li{margin:0 0 16px}.steps p{margin:3px 0}
+.fm{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;display:inline-block;max-width:100%;overflow-wrap:anywhere}
+.vd{display:inline-block;margin-top:6px;padding:6px 12px;border-radius:8px;font-weight:700}.vd.rej{background:var(--warn);color:var(--ink)}.vd.keep{background:var(--good);color:var(--goodink)}
+.hg{margin-top:8px;max-width:700px}.dt{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-top:8px}.dt summary{cursor:pointer;font-weight:600}
+.vtabs{margin:6px 0 14px}
+#hsaved td:nth-child(2),#hsaved th:nth-child(2),#hsaved th:nth-child(3){text-align:left}
+button.b:disabled{opacity:.5;cursor:not-allowed}
+.pg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}.pk{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.pk:hover{border-color:var(--acc)}.pk.on{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc) inset;background:var(--card)}
+.pn{width:22px;height:22px;border-radius:50%;background:var(--acc);color:var(--card);display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;margin-bottom:2px}.pt{font-weight:700}.ps{font-size:.78rem;color:var(--mute)}
+.dg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin:8px 0}.dc{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg)}.dc span{display:block;font-size:.78rem;color:var(--mute)}.dc b{font-size:.95rem;overflow-wrap:anywhere}
+.fb{border-left:4px solid var(--acc);background:var(--bg);border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0}.fl{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--acc);font-weight:700}
+.mx{font-size:1.05rem;padding:6px 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.mx.res{font-weight:700}.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;text-align:center}.fr>span:first-child{border-bottom:1.5px solid var(--ink);padding:0 4px 2px}.fr>span:last-child{padding:2px 4px 0}
 </style>
 </head>
 <body>
 <main>
 <h1>Dashboard estadístico de KPIs</h1>
 
+<div class="tabs vtabs" id="vtabs" role="tablist"><button class="tab" role="tab" aria-selected="true" data-v="desc">Estadística descriptiva</button><button class="tab" role="tab" aria-selected="false" data-v="hyp">Contraste de hipótesis</button></div>
+<div id="v-desc">
 <div class="card">
   <div class="tabs" id="tabs" role="tablist"></div>
   <div class="row">
@@ -68,6 +86,12 @@ svg .ax{stroke:var(--line)}
 
 <div id="out"></div>
 <div id="dec"></div>
+</div>
+<div id="v-hyp" hidden>
+<div id="hform" class="card"></div>
+<div id="hres"></div>
+<div id="hsaved"></div>
+</div>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -92,7 +116,7 @@ function stats(d){
   return{n,mean:m,med:pct(s,.5),mode:mo,sd,v,min:s[0],max:s[n-1],range:s[n-1]-s[0],q1,q3,iqr,cv:m?sd/Math.abs(m)*100:NaN,
     out,wl:inl[0],wh:inl[inl.length-1]};
 }
-const fx=(x,k=2)=>Number.isFinite(x)?x.toLocaleString('es',{minimumFractionDigits:k,maximumFractionDigits:k}):'—';
+const fx=(x,k=2)=>Number.isFinite(x)?x.toLocaleString('es-MX',{minimumFractionDigits:k,maximumFractionDigits:k}):'—';
 
 /* ---------- lectura de datos ---------- */
 function parse(text){
@@ -168,7 +192,7 @@ ${[[t.q3,'Q3'],[t.med,'Med'],[t.q1,'Q1']].map(([v,n])=>`<text x="${cx+w/2+5}" y=
 /* ---------- render ---------- */
 const ROWS=[['Media','mean','a'],['Mediana','med','a'],['Moda','mode'],['Desviación estándar','sd','v'],['Varianza','v'],['Mínimo','min'],['Máximo','max'],['Rango','range','v'],
  ['Percentil 25 (Q1)','q1'],['Percentil 75 (Q3)','q3'],['Rango intercuartílico','iqr','v'],['Coef. de variación (%)','cv','v'],['Valores atípicos (1.5·IQR)','nout']];
-function render(){renderMain();renderDec();}
+function render(){renderMain();renderDec();if(window.hyRefresh)hyRefresh();}
 function renderMain(){
   const k=kpis[cur],out=document.getElementById('out'),err=document.getElementById('err');
   const ser=parse(k.raw);err.textContent='';
@@ -262,13 +286,10 @@ document.getElementById('dec').addEventListener('click',e=>{if(e.target.id==='bp
 /* ---------- exportar ---------- */
 const say=t=>{const m=document.getElementById('msg');if(m)m.textContent=t;};
 async function dl(filename,data){
-  try{
-    const type=filename.endsWith('.pdf')?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    const blob=data instanceof Blob?data:new Blob([data],{type});
-    const url=URL.createObjectURL(blob),a=document.createElement('a');
-    a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),4000);say('Archivo listo.');
-  }catch(e){say('No se pudo descargar el archivo.');}
+  const D=await (window.claude?.use?window.claude.use('downloads'):null);
+  if(!D){say('La descarga no está disponible en esta vista.');return;}
+  try{await D.save({filename,data});say('Archivo listo.');}
+  catch(e){say(e&&e.code==='declined'?'Descarga cancelada.':'No se pudo descargar ('+((e&&e.code)||'error')+').');}
 }
 const recTxt=()=>{const t=totals();return t.length?dn[t.indexOf(Math.max(...t))]:'';};
 function exportXls(){
@@ -340,7 +361,547 @@ async function exportPdf(){
 }
 
 
+/* ---------- motor de contrastes: distribuciones y decisión ---------- */
+const HM=(()=>{
+const G=[0.99999999999980993,676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+function lgamma(z){
+  if(z<0.5)return Math.log(Math.PI/Math.abs(Math.sin(Math.PI*z)))-lgamma(1-z);
+  z-=1;let x=G[0];const t=z+7.5;
+  for(let i=1;i<9;i++)x+=G[i]/(z+i);
+  return 0.5*Math.log(2*Math.PI)+(z+0.5)*Math.log(t)-t+Math.log(x);
+}
+/* gamma incompleta regularizada: devuelve [P,Q] */
+function gammaPQ(a,x){
+  if(x<=0)return[0,1];
+  const pre=Math.exp(-x+a*Math.log(x)-lgamma(a));
+  if(x<a+1){
+    let ap=a,s=1/a,del=s;
+    for(let n=0;n<1000;n++){ap++;del*=x/ap;s+=del;if(Math.abs(del)<Math.abs(s)*1e-16)break;}
+    const P=Math.min(1,s*pre);return[P,1-P];
+  }
+  let b=x+1-a,c=1e300,d=1/b,h=d;
+  for(let i=1;i<1000;i++){
+    const an=-i*(i-a);b+=2;d=an*d+b;if(Math.abs(d)<1e-300)d=1e-300;
+    c=b+an/c;if(Math.abs(c)<1e-300)c=1e-300;d=1/d;const del=d*c;h*=del;
+    if(Math.abs(del-1)<1e-16)break;
+  }
+  const Q=Math.min(1,pre*h);return[1-Q,Q];
+}
+function betacf(a,b,x){
+  const FP=1e-300;let qab=a+b,qap=a+1,qam=a-1,c=1,d=1-qab*x/qap;
+  if(Math.abs(d)<FP)d=FP;d=1/d;let h=d;
+  for(let m=1;m<=1000;m++){
+    const m2=2*m;let aa=m*(b-m)*x/((qam+m2)*(a+m2));
+    d=1+aa*d;if(Math.abs(d)<FP)d=FP;c=1+aa/c;if(Math.abs(c)<FP)c=FP;d=1/d;h*=d*c;
+    aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+    d=1+aa*d;if(Math.abs(d)<FP)d=FP;c=1+aa/c;if(Math.abs(c)<FP)c=FP;d=1/d;
+    const del=d*c;h*=del;if(Math.abs(del-1)<3e-16)break;
+  }
+  return h;
+}
+function ibeta(x,a,b){
+  if(x<=0)return 0;if(x>=1)return 1;
+  const bt=Math.exp(lgamma(a+b)-lgamma(a)-lgamma(b)+a*Math.log(x)+b*Math.log(1-x));
+  return x<(a+1)/(a+b+2)?bt*betacf(a,b,x)/a:1-bt*betacf(b,a,1-x)/b;
+}
+/* normal */
+const normSf=z=>{const q=0.5*gammaPQ(0.5,z*z/2)[1];return z>=0?q:1-q;};
+const normCdf=z=>normSf(-z);
+const normPdf=x=>Math.exp(-x*x/2)/Math.sqrt(2*Math.PI);
+/* t de Student */
+function tSf(t,v){const h=0.5*ibeta(v/(v+t*t),v/2,0.5);return t>=0?h:1-h;}
+const tCdf=(t,v)=>tSf(-t,v);
+const tPdf=(x,v)=>Math.exp(lgamma((v+1)/2)-lgamma(v/2))/Math.sqrt(v*Math.PI)*Math.pow(1+x*x/v,-(v+1)/2);
+/* chi-cuadrada */
+const chiCdf=(x,k)=>gammaPQ(k/2,x/2)[0];
+const chiSf=(x,k)=>gammaPQ(k/2,x/2)[1];
+const chiPdf=(x,k)=>x<=0?(k<2?Infinity:k===2?0.5:0):Math.exp((k/2-1)*Math.log(x)-x/2-(k/2)*Math.log(2)-lgamma(k/2));
+/* F */
+const fCdf=(x,a,b)=>x<=0?0:ibeta(a*x/(a*x+b),a/2,b/2);
+const fSf=(x,a,b)=>x<=0?1:ibeta(b/(a*x+b),b/2,a/2);
+const fPdf=(x,a,b)=>x<=0?(a<2?Infinity:a===2?1:0):Math.exp(0.5*(a*Math.log(a*x)+b*Math.log(b)-(a+b)*Math.log(a*x+b))-Math.log(x)-(lgamma(a/2)+lgamma(b/2)-lgamma((a+b)/2)));
+/* cuantiles por bisección */
+function bisect(cdf,p,lo,hi){
+  while(cdf(hi)<p){lo=hi;hi*=2;if(hi>1e12)break;}
+  for(let i=0;i<200;i++){const m=(lo+hi)/2;if(cdf(m)<p)lo=m;else hi=m;if(hi-lo<1e-13*Math.max(1,Math.abs(m)))break;}
+  return (lo+hi)/2;
+}
+function qSym(cdf,p){ // distribución simétrica alrededor de 0
+  if(p===0.5)return 0;
+  if(p>0.5)return bisect(cdf,p,0,8);
+  return -bisect(cdf,1-p,0,8);
+}
+function mk(type,a,b){
+  switch(type){
+    case 'z':return{type,a,sym:true,s:'z',name:'Normal estándar',cdf:normCdf,sf:normSf,pdf:normPdf,q:p=>qSym(normCdf,p)};
+    case 't':return{type,a,sym:true,s:'t',name:`t de Student (${gl(a)} gl)`,cdf:x=>tCdf(x,a),sf:x=>tSf(x,a),pdf:x=>tPdf(x,a),q:p=>qSym(x=>tCdf(x,a),p)};
+    case 'chi':return{type,a,sym:false,s:'χ²',name:`Chi-cuadrada (${gl(a)} gl)`,cdf:x=>chiCdf(x,a),sf:x=>chiSf(x,a),pdf:x=>chiPdf(x,a),q:p=>bisect(x=>chiCdf(x,a),p,0,Math.max(1,a))};
+    case 'f':return{type,a,b,sym:false,s:'F',name:`F (${gl(a)}, ${gl(b)} gl)`,cdf:x=>fCdf(x,a,b),sf:x=>fSf(x,a,b),pdf:x=>fPdf(x,a,b),q:p=>bisect(x=>fCdf(x,a,b),p,0,2)};
+  }
+}
+const gl=x=>Number.isInteger(x)?String(x):x.toFixed(2);
+/* decisión: valor p, críticos y rechazo. tail: 'two' | 'right' | 'left' */
+function decide(d,stat,tail,alpha){
+  let p,lo=null,hi=null;
+  if(d.sym){
+    if(tail==='two'){p=Math.min(1,2*d.sf(Math.abs(stat)));const c=d.q(1-alpha/2);lo=-c;hi=c;}
+    else if(tail==='right'){p=d.sf(stat);hi=d.q(1-alpha);}
+    else{p=d.sf(-stat);lo=d.q(alpha);}
+  }else{
+    if(tail==='two'){p=Math.min(1,2*Math.min(d.cdf(stat),d.sf(stat)));lo=d.q(alpha/2);hi=d.q(1-alpha/2);}
+    else if(tail==='right'){p=d.sf(stat);hi=d.q(1-alpha);}
+    else{p=d.cdf(stat);lo=d.q(alpha);}
+  }
+  const inReg=(lo!==null&&stat<lo)||(hi!==null&&stat>hi);
+  return{p,lo,hi,reject:p<alpha,inReg};
+}
+return{lgamma,normCdf,normSf,tCdf,tSf,chiCdf,chiSf,fCdf,fSf,mk,decide,pdf:{normPdf,tPdf,chiPdf,fPdf}};
+})();
+
+/* ---------- contraste de hipótesis ---------- */
+(function(){
+const $=id=>document.getElementById(id);
+const g=x=>Number.isFinite(x)?Number(x.toPrecision(7)).toLocaleString('es-MX',{maximumFractionDigits:8}):'—';
+const pcn=x=>(x*100).toLocaleString('es-MX',{maximumFractionDigits:2})+' %';
+const pS=(p,a)=>p<0.0001?'< 0.0001':'= '+pf(p,a);
+const pf=(p,a)=>p<0.0001?'< 0.0001':(a!==undefined&&Math.abs(p-a)<0.0005?p.toFixed(6):p.toFixed(4));
+const XB='x̄',PH='p̂';
+const REL={two:'diferente de',right:'mayor que',left:'menor que'};
+const OPS={'<=':'≤','<':'<','>=':'≥','>':'>'};
+const H0W={two:'es igual a',right:'es menor o igual a',left:'es mayor o igual a'};
+const TAILN={two:'bilateral',right:'de cola derecha',left:'de cola izquierda'};
+const TYPES=[
+  {id:'m1',name:'Una media'},{id:'m2',name:'Dos medias'},
+  {id:'p1',name:'Una proporción'},{id:'p2',name:'Dos proporciones'},
+  {id:'v1',name:'Una varianza'},{id:'v2',name:'Dos varianzas'}];
+const PRESETS=[
+ {id:'p1',just:'Al tener una muestra igual a 30, desconocer σ y en su lugar utilizar s, se basará en t de Student con grados de libertad (gl = n − 1).',label:'Problema 1 · Una media · Latencia (Proveedor A)',type:'m1',k1:'Latencia',sys1:'Proveedor A',val:'35',tail:'right',alpha:'0.01',
+  q:'El proveedor A ofrece en su contrato una latencia promedio de 35 ms. El equipo de TI sospecha que en la operación real el promedio es mayor. ¿El tiempo promedio de latencia del Proveedor A es mayor que 35 ms?'},
+ {id:'p2',just:'Se basa en t de Welch, ya que las varianzas son desiguales, con grados de libertad:',jf:'gl = (s₁²/n₁ + s₂²/n₂)² / [ (s₁²/n₁)²/(n₁ − 1) + (s₂²/n₂)²/(n₂ − 1) ]',label:'Problema 2 · Dos medias · Velocidad de descarga (A vs C)',type:'m2',k1:'Velocidad de descarga',sys1:'Proveedor A',sys2:'Proveedor C',tail:'two',alpha:'0.01',
+  q:'¿La velocidad de descarga promedio del Proveedor A es diferente de la del Proveedor C?'},
+ {id:'p3',just:'Al ser una prueba de Proporción, se basará en la distribución normal estándar (Z).',label:'Problema 3 · Una proporción · Velocidad de descarga ≥ 90 (Proveedor B)',type:'p1',k1:'Velocidad de descarga',sys1:'Proveedor B',val:'0.5',op:'>=',cut:'90',tail:'left',alpha:'0.01',
+  q:'El Proveedor B afirma que en al menos 50% de los días entrega una velocidad de descarga ≥ 90 Mbps. ¿La proporción de días en que B alcanza ese nivel es menor que 0.50?'},
+ {id:'p4',just:'Al ser una prueba de Dos Proporciones, se basará en la distribución normal estándar (Z).',label:'Problema 4 · Dos proporciones · Velocidad ≥ 90 (A vs B)',type:'p2',k1:'Velocidad de descarga',sys1:'Proveedor A',sys2:'Proveedor B',op:'>=',cut:'90',tail:'right',alpha:'0.05',
+  q:'¿La proporción de días en que el Proveedor A alcanza velocidades ≥ 90 Mbps es mayor que la del Proveedor B?'},
+ {id:'p5',just:'Al contar únicamente con una varianza poblacional y una varianza muestral, utilizaremos la tabla de distribución de Xi cuadrada, junto a la fórmula de Xi calculada.',label:'Problema 5 · Una varianza · Latencia (Proveedor A)',type:'v1',k1:'Latencia',sys1:'Proveedor A',val:'25',tail:'right',alpha:'0.05',
+  q:'Para considerar estable a un proveedor, el área de TI exige que la variabilidad de la latencia no supere σ² = 25 ms² (σ = 5 ms; valor hipotético). ¿La varianza de la latencia del Proveedor A es mayor que 25 ms²?'},
+ {id:'p6',just:'Al contar únicamente con dos varianzas muestrales, utilizaremos la tabla de distribución F de Fisher - Snedecor junto con su fórmula correspondiente para F de Fisher calculada.',label:'Problema 6 · Dos varianzas · Velocidad de descarga (B vs C)',type:'v2',k1:'Velocidad de descarga',sys1:'Proveedor B',sys2:'Proveedor C',tail:'right',alpha:'0.01',
+  q:'El área de TI de la empresa quiere saber cuál proveedor (B y C) posee una velocidad de descarga más homogénea. ¿La velocidad de descarga del Proveedor B es más variable que la del Proveedor C?'}];
+const DOC={
+p1:{pa:["El parámetro de interés es el promedio (μ)."],dd:"El estadístico de prueba (tcal =2.769) se encuentra dentro de la zona de rechazo, por lo tanto se rechaza H₀.",dt:[["n", "30 días"], ["x̄", "37.58 ms"], ["s", "5.104 ms"], ["α", "0.01"]],h0:'μ ≤ 35 ms',h1:'μ > 35 ms',cs:'Con un nivel de significancia de 0.01, hay evidencia estadística suficiente para afirmar que la latencia promedio del Proveedor A supera los 35 ms.',cp:'La latencia real del proveedor A (≈ 37.58 ms) excede el valor de referencia; si el contrato exige 35 ms, proveedor A no lo cumple. Es un argumento en contra de A frente a un proveedor con menor latencia.',e1:'La latencia promedio de A esta fallado con latencias mayores a 35 ms cuando en realidad su servicio si cumple con el promedio contratado. Con un nivel de significancia de 0.01, esto ocurrirá en 1% de los casos.',e2:'No detectar que A excede los 35 ms y seguir creyendo que cumple el contrato. El equipo de TI quedaría conforme con un servicio deficiente.'},
+p2:{pa:["El parámetro de interés son dos medias (μ₁ − μ₂ )"],dd:"El estadístico de prueba (tcal =-0.855) se encuentra dentro de la zona de aceptación, por lo tanto se acepta H₀ y se rechaza H₁.",dt:[["Tamaño de la muestra", "n₁ = 30 días (Proveedor A) · n₂ = 30 días (Proveedor C)"], ["Media muestral", "x̄₁ = 91.563 Mbps · x̄₂ = 93.273 Mbps"], ["Desviación estándar muestral", "s₁ = 3.478 Mbps · s₂ = 10.393 Mbps"], ["Nivel de significancia", "α = 0.01"]],h0:'μ₁ = μ₂',h1:'μ₁ ≠ μ₂',cs:'Con un nivel de significancia de 0.10, no hay evidencia suficiente de que las velocidades promedio de proveedor A y proveedor C sean diferentes.',cp:'Con un nivel de significancia de 0.01, el Proveedor A y el proveedor C no muestran una diferencia significativa en su velocidad promedio diaria debido a la alta variabilidad del Proveedor C. Sin embargo, el comportamiento típico del Proveedor C (x̄₂ = 93.273 Mbps) es superior al de A (x̄₁ = 91.563 Mbps), por lo que se recomienda revisar ese incidente del proveedor  C, no darlo por equivalente.',e1:'Declarar que proveedor A y proveedor C tienen velocidades distintas cuando en realidad son iguales; con α = 0.10 el riesgo es de 10 %.',e2:'No detectar una diferencia real entre el proveedor A y proveedor C porque el valor atípico del proveedor C aumenta el error estándar.'},
+p3:{pa:["El parámetro de Interés, al analizar una proporción, es P."],dd:"Se acepta la Hipótesis Nula (H₀).",dt:[["n", "30 días"], ["P = Proporción de éxito poblacional", "50%"], ["P̂ = Proporción muestral", "<span class=\"fr\"><span>11 días con velocidad ≥ 90</span><span>30 días totales</span></span> = 0.3667"], ["Q = Proporción de fracaso", "50%"]],h0:'p ≥ 50%',h1:'p < 50%',cs:'Con un nivel de significancia del 1%, el estadístico de prueba Zcal = -1.4602 no se encuentra en la región de rechazo de la cola izquierda. Por lo tanto, no existe evidencia significativa para afirmar que la proporción de días con velocidad ≥ 90 Mbps sea menor al 50%.',cp:'Al no existir suficiente evidencia, no nos es posible negar lo que el proveedor B menciona. Aunque en la muestra de 30 días solo 11 días cumplió con lo que prometía, el tamaño de la muestra es muy pequeño para asegurar con certeza que el proveedor no es honesto.',e1:'Concluir que la proporción de días viables del Proveedor B es menor al 50%, cuando en realidad el proveedor sí cumple con el 50% o más a largo plazo.',e2:'Concluir que el Proveedor B sí cumple, cuando en realidad el proveedor está entregando un servicio deficiente.'},
+p4:{pa:["El parámetro de Interés, al analizar dos proporción, es PA y PB."],dd:"Se rechaza la Hipótesis Nula (H₀). El proveedor A alcanza esas velocidades en más días, a comparación del B.",dt:[["n", "30 días"], ["XA", "18 días"], ["XB", "11 días"], ["P̄ = Proporción ponderada combinada", "<span class=\"fr\"><span>XA + XB</span><span>nA + nB</span></span> = <span class=\"fr\"><span>18 + 11</span><span>30 + 30</span></span> = 0.4833"], ["P1 = Proporción de la muestra 1", "<span class=\"fr\"><span>xA</span><span>nA</span></span> = <span class=\"fr\"><span>18</span><span>30</span></span> = 0.6"], ["P2 = Proporción de la muestra 2", "<span class=\"fr\"><span>xB</span><span>nB</span></span> = <span class=\"fr\"><span>11</span><span>30</span></span> = 0.3667"], ["Q = Proporción de fracaso", "Contrasta a P = 0.5167"]],h0:'PA ≤ PB',h1:'PA > PB',cs:'Con un nivel de significancia del 5%, el estadístico de prueba Zcal = 1.8081 se encuentra en la región de rechazo de la cola derecha. Por lo tanto, sí existe evidencia significativa para afirmar que la proporción de días en que el Proveedor A alcanza velocidades ≥ 90 Mbps es mayor que la del Proveedor B.',cp:'El Proveedor A garantiza una mayor consistencia y confiabilidad en la entrega de velocidades óptimas (90Mbps) en comparación con el Proveedor B, logrando la meta en un 60% de los días frente a sólo un 36.67% del Proveedor B.',e1:'Concluir que la proporción de días donde su velocidad es ≥ 90 Mbps del Proveedor A es mayor que el Proveedor B, cuando en realidad no lo es. Esto podría llevar a rechazar un Proveedor que cuenta con un rendimiento más optimizado.',e2:'Concluir que el Proveedor A no es mayor que el proveedor B, cuando en realidad sí lo es. Esto podría llevar a que la empresa pierda la oportunidad de optimizar con ayuda del proveedor A.'},
+p5:{pa:["Varianza poblacional de la latencia (ms²) del Proveedor A."],dd:"Se acepta la hipótesis nula y se rechaza la hipótesis alterna.",dt:[["Días (n)", "30"], ["Desviación típica muestral (s)", "5.104 ms aproximadamente"], ["Desviación típica máxima (σ)", "5 ms"], ["Varianza muestral (S²)", "26.05 ms²"], ["Varianza poblacional (σ²)", "25 ms²"], ["α", "0.05"]],h0:'σ² ≤ 25 ms²',h1:'σ² > 25 ms²',cs:'Con un nivel de significancia del 0.05. No hay evidencia significativa que la variabilidad de la latencia del proveedor A sea mayor a 25 ms². (a pesar de que la varianza muestral es de 26.05, es aún aceptable)',cp:'El proveedor A puede considerarse estable en latencia dentro del límite fijado. Esto no demuestra que σ² sea 25; solo que los datos no contradicen el límite. Con más días de monitoreo se afinará la conclusión.',e1:'Concluir que A es demasiado variable cuando en realidad su varianza es ≤ 25 ms², descartando por error a un proveedor estable.',e2:'No detectar que A realmente supera el límite de variabilidad y contratarlo creyendo que es estable.'},
+p6:{pa:["Varianza Poblacional de B  σ₁²", "Varianza Poblacional de C  σ₂²"],dd:"Se acepta la hipótesis nula y se rechaza la hipótesis alterna.",dt:[["Días (n)", "30"], ["Desviación estándar muestral (Proveedor B)", "15.5769 Mbps aproximadamente"], ["Desviación estándar muestral (Proveedor C)", "10.3925 Mbps aproximadamente"], ["Varianza muestral (Proveedor B)", "242.639 Mbps²"], ["Varianza muestral (Proveedor C)", "108.004 Mbps²"], ["α", "0.01"]],h0:'σ₁² ≤ σ₂²',h1:'σ₁² > σ₂²',cs:'Con un nivel de significancia del 0.01, no hay evidencia significativa que el proveedor B sea más variable que el proveedor C. Debido a que el valor crítico no llega a cubrir el estadístico de prueba.',cp:'Con un nivel de significancia del 0.01, el proveedor B es menos o igual de variable en cuanto a velocidad de descarga que el proveedor C, sin embargo debemos de tomar en cuenta que el nivel de error es insignificante, por lo que se recomienda aumentar el número de días para su mejor monitoreo.',e1:'Afirmar que B es más variable que C cuando en realidad B es menor o igual de variable que el proveedor C.',e2:'Afirmar que B es menor o igual de variable que el proveedor C, cuando en realidad B es más variable que C.'}};
+function findSrc(k,sy){return srcs().find(o=>o.kpi.toLowerCase()===k.toLowerCase()&&o.sys.toLowerCase()===sy.toLowerCase());}
+function applyPreset(p){
+  const a=findSrc(p.k1,p.sys1),b=p.sys2?findSrc(p.k1,p.sys2):null;
+  if(!a||(p.sys2&&!b))return false;
+  Object.assign(hy,{type:p.type,s1:a.key,s2:b?b.key:hy.s2,n1:'',n2:'',val:p.val||'',tail:p.tail,alpha:p.alpha,op:p.op||hy.op,cut:p.cut||'',sigmaKnown:false,varEq:false,q:p.q,qDirty:true,preset:p.id});
+  return true;
+}
+const hy={type:'m1',s1:'',s2:'',n1:'',n2:'',val:'',tail:'two',alpha:'0.05',sigmaKnown:false,sigma:'',varEq:false,op:'<=',cut:'',q:'',qDirty:false,preset:'',presetMsg:''};
+let saved=[],last=null,confirmDel=false;
+try{saved=JSON.parse(localStorage.getItem('kpiHyp1')||'[]');if(!Array.isArray(saved))saved=[];}catch(e){saved=[];}
+const persist=()=>{try{localStorage.setItem('kpiHyp1',JSON.stringify(saved));}catch(e){}};
+const ud=S=>S.unit?' '+S.unit:'';
+const up=S=>S.unit?` (${S.unit})`:'';
+const isTwo=()=>/2$/.test(hy.type);
+
+/* ---------- datos disponibles ---------- */
+function srcs(){
+  const o=[];
+  kpis.forEach((k,ki)=>parse(k.raw).forEach((s,j)=>o.push({key:ki+'|'+j,ki,j,kpi:k.name||('KPI '+(ki+1)),unit:k.unit||'',better:k.better,sys:s.name,data:s.data})));
+  return o;
+}
+function pick(key,nStr){
+  const s=srcs().find(o=>o.key===key);if(!s)return null;
+  const N=s.data.length;let n=parseInt(nStr,10);if(!(n>=1))n=N;n=Math.min(n,N);
+  return Object.assign({},s,{N,n,data:s.data.slice(0,n)});
+}
+const okFn=()=>{const c=parseFloat(hy.cut),o=hy.op;return v=>o==='<='?v<=c:o==='<'?v<c:o==='>='?v>=c:v>c;};
+const critTxt=S=>`${S.kpi} ${OPS[hy.op]} ${hy.cut===''||!isFinite(parseFloat(hy.cut))?'…':g(parseFloat(hy.cut))}${ud(S)}`;
+
+/* ---------- pregunta automática ---------- */
+function autoQ(S1,S2){
+  if(!S1)return '';
+  const t=hy.tail,v0=parseFloat(hy.val),v=isFinite(v0)?g(v0):'…',rel=REL[t];
+  const A=`${S1.kpi} en ${S1.sys}`,B=S2?`${S2.kpi} en ${S2.sys}`:'';
+  const cmp=t==='two'?'difiere':t==='right'?'es mayor':'es menor';
+  switch(hy.type){
+    case 'm1':return `¿El promedio de ${A} es ${rel} ${v}${ud(S1)}?`;
+    case 'm2':return t==='two'?`¿Existe diferencia entre el promedio de ${A} y el de ${B}?`:`¿El promedio de ${A} es ${t==='right'?'mayor':'menor'} que el de ${B}?`;
+    case 'p1':return `¿La proporción de observaciones de ${S1.kpi} en ${S1.sys} que cumplen «${critTxt(S1)}» es ${rel} ${v}?`;
+    case 'p2':return t==='two'?`¿La proporción de observaciones que cumplen «${critTxt(S1)}» difiere entre ${S1.sys} y ${S2?S2.sys:'…'}?`:`¿La proporción de observaciones que cumplen «${critTxt(S1)}» es ${t==='right'?'mayor':'menor'} en ${S1.sys} que en ${S2?S2.sys:'…'}?`;
+    case 'v1':return `¿La varianza de ${A} es ${rel} ${v}${S1.unit?' '+S1.unit+'²':''}?`;
+    case 'v2':return t==='two'?`¿La variabilidad (varianza) de ${A} es diferente de la de ${B}?`:`¿La variabilidad (varianza) de ${A} es ${t==='right'?'mayor':'menor'} que la de ${B}?`;
+  }
+  return '';
+}
+
+/* ---------- especificación de cada prueba ---------- */
+function buildSpec(S1,S2){
+  const T=hy.type,tail=hy.tail;
+  switch(T){
+  case 'm1':{
+    const x=S1.data,n=x.length;if(n<2)return{err:'Se necesitan al menos 2 observaciones (n ≥ 2).'};
+    const mu0=parseFloat(hy.val);if(!isFinite(mu0))return{err:'Escribe el valor hipotético μ₀ que quieres contrastar.'};
+    const st=stats(x),m=st.mean,s=st.sd,known=hy.sigmaKnown,sg=parseFloat(hy.sigma);
+    if(known&&!(sg>0))return{err:'Escribe la desviación estándar poblacional σ (mayor que 0).'};
+    const sd=known?sg:s;if(!(sd>0))return{err:'Todas las observaciones son iguales (s = 0): no se puede calcular el estadístico.'};
+    const se=sd/Math.sqrt(n),stat=(m-mu0)/se,u=ud(S1),loc=`${S1.kpi} en ${S1.sys}`,sn=known?'z':'t';
+    return{
+      name:known?'Prueba z para una media (σ conocida)':'Prueba t de Student para una media (σ desconocida)',
+      par:{sym:'μ',words:`promedio poblacional de ${S1.kpi}${up(S1)} en ${S1.sys}`},
+      lhs:'μ',rhs:g(mu0),
+      h0w:`el promedio de ${loc} ${H0W[tail]} ${g(mu0)}${u}`,
+      h1w:`el promedio de ${loc} es ${REL[tail]} ${g(mu0)}${u}`,
+      dist:known?HM.mk('z'):HM.mk('t',n-1),stat,
+      just:[
+        `Se compara el promedio de una sola muestra (${loc}) contra un valor de referencia; la variable es cuantitativa.`,
+        known?`Se conoce la desviación estándar poblacional (σ = ${g(sg)}${u}), por eso el estadístico sigue una distribución normal estándar.`
+             :`La desviación estándar de la población no se conoce y se estima con la muestra (s), por eso el estadístico sigue una distribución t de Student con n − 1 = ${n-1} grados de libertad.`,
+        `Supuestos: observaciones independientes y población aproximadamente normal${n>=30?` (n = ${n} ≥ 30, Teorema del Límite Central)`:''}.`],
+      data:[`Tamaño de muestra: n = ${n}${S1.n<S1.N?` (primeras ${n} de ${S1.N} observaciones)`:''}`,`Media muestral: ${XB} = ${fx(m)}${u}`,
+            known?`Desviación estándar poblacional: σ = ${g(sg)}${u}`:`Desviación estándar muestral: s = ${fx(s)}${u}`,`Valor hipotético: μ₀ = ${g(mu0)}${u}`,`Nivel de significancia: α = ${g(parseFloat(hy.alpha))}`],
+      formula:`${sn} = (${XB} − μ₀) / (${known?'σ':'s'} / √n)`,
+      subst:[`Error estándar = ${known?'σ':'s'} / √n = ${fx(sd)} / √${n} = ${fx(se,4)}`,`${sn} = (${fx(m)} − ${g(mu0)}) / ${fx(se,4)} = ${fx(stat,4)}`],
+      prac:{
+        reject:`El promedio observado de ${loc} (${fx(m)}${u}) ${m>mu0?'supera':'es inferior a'} el valor de referencia (${g(mu0)}${u}).`,
+        keep:`El promedio observado de ${loc} (${fx(m)}${u}) no difiere significativamente del valor de referencia (${g(mu0)}${u}).`}
+    };
+  }
+  case 'm2':{
+    const a=S1.data,b=S2.data,n1=a.length,n2=b.length;if(n1<2||n2<2)return{err:'Cada muestra necesita al menos 2 observaciones.'};
+    const A=stats(a),B=stats(b),m1=A.mean,m2=B.mean,s1=A.sd,s2=B.sd,v1=s1*s1,v2=s2*s2;
+    if(!(v1>0&&v2>0))return{err:'Una de las muestras no tiene variación (s = 0): no se puede calcular el estadístico.'};
+    const same=S1.ki===S2.ki,L1=same?S1.sys:`${S1.kpi} (${S1.sys})`,L2=same?S2.sys:`${S2.kpi} (${S2.sys})`,ctx=same?` de ${S1.kpi}`:'';
+    const u1=ud(S1),u2=ud(S2);
+    let se,df,sp2;
+    if(hy.varEq){sp2=((n1-1)*v1+(n2-1)*v2)/(n1+n2-2);se=Math.sqrt(sp2*(1/n1+1/n2));df=n1+n2-2;}
+    else{const q1=v1/n1,q2=v2/n2;se=Math.sqrt(q1+q2);df=(q1+q2)**2/(q1*q1/(n1-1)+q2*q2/(n2-1));}
+    const stat=(m1-m2)/se,better=same?kpis[S1.ki].better:null;
+    const bestL=better?((better==='low'?m1<m2:m1>m2)?L1:L2):null;
+    const sub=hy.varEq
+      ?[`Varianza agrupada: sp² = ((n₁−1)s₁² + (n₂−1)s₂²) / (n₁+n₂−2) = (${n1-1}·${fx(v1,4)} + ${n2-1}·${fx(v2,4)}) / ${n1+n2-2} = ${fx(sp2,4)}`,
+        `Error estándar = √(sp²·(1/n₁ + 1/n₂)) = ${fx(se,4)}`,`t = (${fx(m1)} − ${fx(m2)}) / ${fx(se,4)} = ${fx(stat,4)}`]
+      :[`Error estándar = √(s₁²/n₁ + s₂²/n₂) = √(${fx(v1,4)}/${n1} + ${fx(v2,4)}/${n2}) = ${fx(se,4)}`,
+        `Grados de libertad (Welch) = ${fx(df,2)}`,`t = (${fx(m1)} − ${fx(m2)}) / ${fx(se,4)} = ${fx(stat,4)}`];
+    return{
+      name:hy.varEq?'Prueba t para dos medias, muestras independientes (varianza agrupada)':'Prueba t de Welch para dos medias, muestras independientes',
+      par:{sym:'μ₁ − μ₂',words:`diferencia entre los promedios poblacionales${ctx} de ${L1} (μ₁) y ${L2} (μ₂)`},
+      lhs:'μ₁ − μ₂',rhs:'0',
+      h0w:tail==='two'?`los promedios${ctx} de ${L1} y ${L2} son iguales`:`el promedio${ctx} de ${L1} es ${tail==='right'?'menor':'mayor'} o igual que el de ${L2}`,
+      h1w:tail==='two'?`los promedios${ctx} de ${L1} y ${L2} son diferentes`:`el promedio${ctx} de ${L1} es ${tail==='right'?'mayor':'menor'} que el de ${L2}`,
+      dist:HM.mk('t',df),stat,
+      just:[`Se comparan los promedios de dos grupos distintos (${L1} y ${L2}); las muestras son independientes y la variable es cuantitativa.`,
+        hy.varEq?`Se supone que las dos poblaciones tienen la misma varianza (σ₁² = σ₂²), por eso se usa la varianza agrupada con n₁ + n₂ − 2 = ${df} grados de libertad.`
+                :`No se supone que las varianzas sean iguales (prueba de Welch), por lo que los grados de libertad se aproximan: gl = ${fx(df,2)}.`,
+        `Supuestos: observaciones independientes y poblaciones aproximadamente normales (o muestras grandes). n₁ = ${n1}, n₂ = ${n2}.`],
+      data:[`Muestra 1 (${L1}): n₁ = ${n1}, ${XB}₁ = ${fx(m1)}${u1}, s₁ = ${fx(s1)}${u1}`,`Muestra 2 (${L2}): n₂ = ${n2}, ${XB}₂ = ${fx(m2)}${u2}, s₂ = ${fx(s2)}${u2}`,`Diferencia hipotética: μ₁ − μ₂ = 0`,`Nivel de significancia: α = ${g(parseFloat(hy.alpha))}`],
+      formula:hy.varEq?`t = (${XB}₁ − ${XB}₂) / √(sp²·(1/n₁ + 1/n₂))`:`t = (${XB}₁ − ${XB}₂) / √(s₁²/n₁ + s₂²/n₂)`,
+      subst:sub,
+      prac:{
+        reject:`${tail==='two'?`Los promedios${ctx} de ${L1} (${fx(m1)}${u1}) y ${L2} (${fx(m2)}${u2}) son significativamente distintos.`:`El promedio${ctx} de ${L1} (${fx(m1)}${u1}) es ${tail==='right'?'mayor':'menor'} que el de ${L2} (${fx(m2)}${u2}).`}${bestL?` ${bestL} tiene el mejor desempeño promedio.`:''}`,
+        keep:`No hay diferencia significativa entre los promedios${ctx} de ${L1} (${fx(m1)}${u1}) y ${L2} (${fx(m2)}${u2}).`}
+    };
+  }
+  case 'p1':{
+    const cut=parseFloat(hy.cut);if(!isFinite(cut))return{err:'Define el criterio de éxito: escribe el valor de corte (por ejemplo, ≤ 30).'};
+    const p0=parseFloat(hy.val);if(!(p0>0&&p0<1))return{err:'Escribe p₀, una proporción entre 0 y 1 (por ejemplo 0.8).'};
+    const ok=okFn(),n=S1.data.length,x=S1.data.filter(ok).length,ph=x/n,se=Math.sqrt(p0*(1-p0)/n),stat=(ph-p0)/se;
+    const c1=n*p0,c2=n*(1-p0),cr=critTxt(S1);
+    return{
+      name:'Prueba z para una proporción',
+      par:{sym:'p',words:`proporción poblacional de observaciones de ${S1.kpi} en ${S1.sys} que cumplen «${cr}» (éxito)`},
+      lhs:'p',rhs:g(p0),
+      h0w:`la proporción de éxito («${cr}») en ${S1.sys} ${H0W[tail]} ${g(p0)} (${pcn(p0)})`,
+      h1w:`la proporción de éxito («${cr}») en ${S1.sys} es ${REL[tail]} ${g(p0)} (${pcn(p0)})`,
+      dist:HM.mk('z'),stat,
+      just:[`La variable se convierte en categórica con dos resultados: éxito si «${cr}» y fracaso en caso contrario. Se contrasta una sola proporción contra un valor de referencia.`,
+        `Supuestos: observaciones independientes y aproximación normal válida si n·p₀ ≥ 10 y n·(1 − p₀) ≥ 10. Aquí n·p₀ = ${fx(c1,1)} ${c1>=10?'✓':'✗'} y n·(1 − p₀) = ${fx(c2,1)} ${c2>=10?'✓':'✗'}.`],
+      data:[`Criterio de éxito: ${cr}`,`Tamaño de muestra: n = ${n}${S1.n<S1.N?` (primeras ${n} de ${S1.N})`:''}`,`Éxitos: x = ${x}`,`Proporción muestral: ${PH} = x/n = ${x}/${n} = ${fx(ph,4)} (${pcn(ph)})`,`Proporción hipotética: p₀ = ${g(p0)}`,`Nivel de significancia: α = ${g(parseFloat(hy.alpha))}`],
+      formula:`z = (${PH} − p₀) / √(p₀(1 − p₀)/n)`,
+      subst:[`Error estándar = √(${g(p0)}·${g(1-p0)}/${n}) = ${fx(se,4)}`,`z = (${fx(ph,4)} − ${g(p0)}) / ${fx(se,4)} = ${fx(stat,4)}`],
+      prac:{
+        reject:`En ${S1.sys}, ${x} de ${n} observaciones (${pcn(ph)}) cumplen «${cr}»; la proporción ${ph>p0?'supera':'es inferior a'} la de referencia (${pcn(p0)}).`,
+        keep:`En ${S1.sys}, ${x} de ${n} observaciones (${pcn(ph)}) cumplen «${cr}»; la proporción no difiere significativamente de la de referencia (${pcn(p0)}).`}
+    };
+  }
+  case 'p2':{
+    const cut=parseFloat(hy.cut);if(!isFinite(cut))return{err:'Define el criterio de éxito: escribe el valor de corte (se usa el mismo en las dos muestras).'};
+    const ok=okFn(),n1=S1.data.length,n2=S2.data.length,x1=S1.data.filter(ok).length,x2=S2.data.filter(ok).length;
+    const p1=x1/n1,p2=x2/n2,pc=(x1+x2)/(n1+n2);
+    if(!(pc>0&&pc<1))return{err:'Con ese criterio todas (o ninguna) de las observaciones son éxito: elige otro valor de corte.'};
+    const se=Math.sqrt(pc*(1-pc)*(1/n1+1/n2)),stat=(p1-p2)/se,same=S1.ki===S2.ki;
+    const L1=same?S1.sys:`${S1.kpi} (${S1.sys})`,L2=same?S2.sys:`${S2.kpi} (${S2.sys})`,cr=critTxt(S1);
+    const chk=[n1*pc,n1*(1-pc),n2*pc,n2*(1-pc)],chkOk=chk.every(v=>v>=5);
+    return{
+      name:'Prueba z para dos proporciones (muestras independientes)',
+      par:{sym:'p₁ − p₂',words:`diferencia entre las proporciones poblacionales de éxito («${cr}») de ${L1} (p₁) y ${L2} (p₂)`},
+      lhs:'p₁ − p₂',rhs:'0',
+      h0w:tail==='two'?`la proporción de éxito («${cr}») es igual en ${L1} y en ${L2}`:`la proporción de éxito («${cr}») de ${L1} es ${tail==='right'?'menor':'mayor'} o igual que la de ${L2}`,
+      h1w:tail==='two'?`la proporción de éxito es diferente entre ${L1} y ${L2}`:`la proporción de éxito de ${L1} es ${tail==='right'?'mayor':'menor'} que la de ${L2}`,
+      dist:HM.mk('z'),stat,
+      just:[`Se comparan las proporciones de éxito («${cr}») de dos grupos independientes. La variable se convierte en categórica (éxito / fracaso) con el mismo criterio en ambas muestras.`,
+        `Bajo H₀ las dos proporciones son iguales, por lo que se usa la proporción combinada ${PH}c = (x₁ + x₂)/(n₁ + n₂).`,
+        `Supuestos: muestras independientes y n₁·${PH}c, n₁(1 − ${PH}c), n₂·${PH}c, n₂(1 − ${PH}c) ≥ 5. Valores: ${chk.map(v=>fx(v,1)).join(', ')} ${chkOk?'✓':'✗'}.`],
+      data:[`Criterio de éxito (mismo en ambas muestras): ${cr}`,`Muestra 1 (${L1}): n₁ = ${n1}, x₁ = ${x1}, ${PH}₁ = ${fx(p1,4)} (${pcn(p1)})`,`Muestra 2 (${L2}): n₂ = ${n2}, x₂ = ${x2}, ${PH}₂ = ${fx(p2,4)} (${pcn(p2)})`,`Proporción combinada: ${PH}c = (${x1} + ${x2}) / (${n1} + ${n2}) = ${fx(pc,4)}`,`Nivel de significancia: α = ${g(parseFloat(hy.alpha))}`],
+      formula:`z = (${PH}₁ − ${PH}₂) / √(${PH}c(1 − ${PH}c)(1/n₁ + 1/n₂))`,
+      subst:[`Error estándar = √(${fx(pc,4)}·${fx(1-pc,4)}·(1/${n1} + 1/${n2})) = ${fx(se,4)}`,`z = (${fx(p1,4)} − ${fx(p2,4)}) / ${fx(se,4)} = ${fx(stat,4)}`],
+      prac:{
+        reject:`${L1}: ${pcn(p1)}; ${L2}: ${pcn(p2)}. ${tail==='two'?`La proporción de cumplimiento de «${cr}» es distinta; ${p1>p2?L1:L2} cumple con más frecuencia.`:`La proporción de cumplimiento de «${cr}» de ${L1} es ${tail==='right'?'mayor':'menor'} que la de ${L2}.`}`,
+        keep:`${L1}: ${pcn(p1)}; ${L2}: ${pcn(p2)}. No hay diferencia significativa en la proporción de cumplimiento de «${cr}».`}
+    };
+  }
+  case 'v1':{
+    const n=S1.data.length;if(n<2)return{err:'Se necesitan al menos 2 observaciones (n ≥ 2).'};
+    const s02=parseFloat(hy.val);if(!(s02>0))return{err:'Escribe σ₀², la varianza hipotética (mayor que 0).'};
+    const st=stats(S1.data),s2=st.v;if(!(s2>0))return{err:'Todas las observaciones son iguales (s² = 0): no se puede calcular el estadístico.'};
+    const stat=(n-1)*s2/s02,u2=S1.unit?' '+S1.unit+'²':'',loc=`${S1.kpi} en ${S1.sys}`;
+    const more=s2>s02;
+    return{
+      name:'Prueba χ² (chi-cuadrada) para una varianza',
+      par:{sym:'σ²',words:`varianza poblacional de ${S1.kpi}${S1.unit?` (${S1.unit}²)`:''} en ${S1.sys} (mide la variabilidad o estabilidad)`},
+      lhs:'σ²',rhs:g(s02),
+      h0w:`la varianza de ${loc} ${H0W[tail]} ${g(s02)}${u2}`,
+      h1w:`la varianza de ${loc} es ${REL[tail]} ${g(s02)}${u2}${tail==='right'?' (hay más variabilidad)':tail==='left'?' (hay menos variabilidad)':''}`,
+      dist:HM.mk('chi',n-1),stat,
+      just:[`Se contrasta la variabilidad de una sola población (${loc}) contra un valor de referencia; la variable es cuantitativa.`,
+        `El estadístico χ² = (n − 1)s² / σ₀² sigue una distribución chi-cuadrada con n − 1 = ${n-1} grados de libertad.`,
+        `Supuestos: observaciones independientes y población normal.`],
+      data:[`Tamaño de muestra: n = ${n}${S1.n<S1.N?` (primeras ${n} de ${S1.N})`:''}`,`Varianza muestral: s² = ${fx(s2,4)}${u2} (s = ${fx(st.sd)}${ud(S1)})`,`Varianza hipotética: σ₀² = ${g(s02)}${u2}`,`Nivel de significancia: α = ${g(parseFloat(hy.alpha))}`],
+      formula:'χ² = (n − 1)·s² / σ₀²',
+      subst:[`χ² = (${n} − 1)·${fx(s2,4)} / ${g(s02)} = ${fx(stat,4)}`],
+      prac:{
+        reject:`La varianza observada de ${loc} (s² = ${fx(s2,4)}) ${more?'supera':'es inferior a'} la hipotética (σ₀² = ${g(s02)}).`,
+        keep:`La varianza observada de ${loc} (s² = ${fx(s2,4)}) no difiere significativamente de la hipotética (σ₀² = ${g(s02)}).`}
+    };
+  }
+  case 'v2':{
+    const a=S1.data,b=S2.data,n1=a.length,n2=b.length;if(n1<2||n2<2)return{err:'Cada muestra necesita al menos 2 observaciones.'};
+    const A=stats(a),B=stats(b),v1=A.v,v2=B.v;if(!(v1>0&&v2>0))return{err:'Una de las muestras no tiene variación (s² = 0): no se puede calcular el estadístico.'};
+    const stat=v1/v2,same=S1.ki===S2.ki,L1=same?S1.sys:`${S1.kpi} (${S1.sys})`,L2=same?S2.sys:`${S2.kpi} (${S2.sys})`,ctx=same?` de ${S1.kpi}`:'';
+    const stab=v1<v2?L1:L2;
+    return{
+      name:'Prueba F para la razón de dos varianzas',
+      par:{sym:'σ₁² / σ₂²',words:`razón entre las varianzas poblacionales${ctx} de ${L1} (σ₁²) y ${L2} (σ₂²)`},
+      lhs:'σ₁² / σ₂²',rhs:'1',
+      h0w:tail==='two'?`la variabilidad${ctx} de ${L1} y ${L2} es igual (σ₁² = σ₂²)`:`la variabilidad${ctx} de ${L1} es ${tail==='right'?'menor':'mayor'} o igual que la de ${L2} (σ₁² ${tail==='right'?'≤':'≥'} σ₂²)`,
+      h1w:tail==='two'?`la variabilidad${ctx} de ${L1} y ${L2} es diferente (σ₁² ≠ σ₂²)`:`la variabilidad${ctx} de ${L1} es ${tail==='right'?'mayor':'menor'} que la de ${L2}`,
+      dist:HM.mk('f',n1-1,n2-1),stat,
+      just:[`Se comparan las varianzas (variabilidad) de dos grupos independientes (${L1} y ${L2}); la variable es cuantitativa.`,
+        `El estadístico F = s₁² / s₂² sigue una distribución F con (n₁ − 1, n₂ − 1) = (${n1-1}, ${n2-1}) grados de libertad.`,
+        `Supuestos: muestras independientes y poblaciones normales.`],
+      data:[`Muestra 1 (${L1}): n₁ = ${n1}, s₁² = ${fx(v1,4)}${S1.unit?' '+S1.unit+'²':''}`,`Muestra 2 (${L2}): n₂ = ${n2}, s₂² = ${fx(v2,4)}${S2.unit?' '+S2.unit+'²':''}`,`Razón hipotética: σ₁² / σ₂² = 1`,`Nivel de significancia: α = ${g(parseFloat(hy.alpha))}`],
+      formula:'F = s₁² / s₂²',
+      subst:[`F = ${fx(v1,4)} / ${fx(v2,4)} = ${fx(stat,4)}`],
+      prac:{
+        reject:`Varianzas muestrales: ${L1}, s² = ${fx(v1,4)}; ${L2}, s² = ${fx(v2,4)}. ${tail==='two'?'La variabilidad es distinta':`La variabilidad de ${L1} es ${tail==='right'?'mayor':'menor'} que la de ${L2}`}; ${stab} presenta menor variabilidad.`,
+        keep:`Varianzas muestrales: ${L1}, s² = ${fx(v1,4)}; ${L2}, s² = ${fx(v2,4)}. No hay diferencia significativa en la variabilidad.`}
+    };
+  }}
+}
+
+/* ---------- gráfica de la zona de rechazo ---------- */
+function distSvg(d,stat,r,alpha,tail){
+  const Wd=W,Hd=H,m={l:46,r:18,t:54,b:62},pw=Wd-m.l-m.r,ph=Hd-m.t-m.b,base=Hd-m.b;
+  let x0,x1;
+  if(d.sym){const lim=Math.max(4,Math.abs(stat)*1.15,Math.abs(r.lo||0)*1.25,Math.abs(r.hi||0)*1.25);x0=-lim;x1=lim;}
+  else{
+    x1=Math.max(d.q(0.995),stat*1.15,(r.hi||0)*1.2);
+    const big=d.type==='chi'?d.a>=8:(d.a>=8&&d.b>=8);
+    x0=big?d.q(0.0005)*0.8:0;
+    x0=Math.min(x0,stat*0.85,r.lo&&r.lo>0?r.lo*0.85:x0);x0=Math.max(0,x0);
+  }
+  const N=260,xs=[],ys=[];let ymax=0;
+  for(let i=0;i<=N;i++){const x=x0+(x1-x0)*i/N;xs.push(x);const y=d.pdf(x);ys.push(y);if(Number.isFinite(y)&&x>=x0+(x1-x0)*0.01)ymax=Math.max(ymax,y);}
+  ymax*=1.1;
+  const xx=v=>m.l+pw*(v-x0)/(x1-x0),yy=v=>m.t+ph*(1-Math.min(Math.max(v,0),ymax)/ymax);
+  const curve=xs.map((x,i)=>`${i?'L':'M'}${xx(x).toFixed(1)},${yy(ys[i]).toFixed(1)}`).join(' ');
+  const region=(a,b)=>{
+    a=Math.max(a,x0);b=Math.min(b,x1);if(!(b>a))return'';
+    const k=80,pts=[];for(let i=0;i<=k;i++){const x=a+(b-a)*i/k;pts.push(`L${xx(x).toFixed(1)},${yy(d.pdf(x)).toFixed(1)}`);}
+    return`<path d="M${xx(a).toFixed(1)},${yy(0)} ${pts.join(' ')} L${xx(b).toFixed(1)},${yy(0)} Z" fill="#c0392b" fill-opacity=".38"/>`;
+  };
+  const RED='#c0392b',GRN='#2e9e5b',vc=r.inReg?RED:GRN,s=d.s;
+  const sx=Math.min(Math.max(xx(stat),m.l),Wd-m.r);
+  let shade='',crit='';
+  if(r.lo!==null){shade+=region(x0,r.lo);crit+=`<line x1="${xx(r.lo)}" x2="${xx(r.lo)}" y1="${m.t}" y2="${base}" stroke="${RED}" stroke-width="1.3" stroke-dasharray="4 3"/><text x="${sx>=xx(r.lo)&&sx<=xx(r.lo)+100?xx(r.lo)-5:xx(r.lo)+5}" y="${m.t+10}" text-anchor="${sx>=xx(r.lo)&&sx<=xx(r.lo)+100?'end':'start'}" style="fill:${RED};font-size:11px">${s} crít = ${fx(r.lo,3)}</text>`;}
+  if(r.hi!==null){shade+=region(r.hi,x1);crit+=`<line x1="${xx(r.hi)}" x2="${xx(r.hi)}" y1="${m.t}" y2="${base}" stroke="${RED}" stroke-width="1.3" stroke-dasharray="4 3"/><text x="${sx<=xx(r.hi)&&sx>=xx(r.hi)-100?xx(r.hi)+5:xx(r.hi)-5}" y="${m.t+10}" text-anchor="${sx<=xx(r.hi)&&sx>=xx(r.hi)-100?'start':'end'}" style="fill:${RED};font-size:11px">${s} crít = ${fx(r.hi,3)}</text>`;}
+  const stLine=`<line x1="${sx}" x2="${sx}" y1="${m.t-8}" y2="${base}" stroke="${vc}" stroke-width="2.4"/><circle cx="${sx}" cy="${base}" r="4" fill="${vc}"/><text x="${Math.min(Math.max(sx,m.l+46),Wd-m.r-46)}" y="${m.t-16}" text-anchor="middle" style="fill:${vc};font-size:12px;font-weight:700">${s} = ${fx(stat,3)}</text>`;
+  const tk=scale(x0,x1).t.filter(v=>v>=x0-1e-9&&v<=x1+1e-9);
+  const ticks=tk.map(v=>`<line x1="${xx(v)}" x2="${xx(v)}" y1="${base}" y2="${base+4}" class="ax"/><text x="${xx(v)}" y="${base+16}" text-anchor="middle">${g(v)}</text>`).join('');
+  const verdict=r.inReg?`El estadístico cae en la región de rechazo → se rechaza H₀`:`El estadístico no cae en la región de rechazo → no se rechaza H₀`;
+  return`<svg viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Zona de rechazo y decisión">
+<text x="${m.l}" y="16" style="fill:var(--ink);font-size:12px;font-weight:700">${esc(d.name)} · α = ${g(alpha)} · ${TAILN[tail]}</text>
+<line x1="${m.l}" x2="${Wd-m.r}" y1="${base}" y2="${base}" class="ax"/>
+${shade}<path d="${curve}" fill="none" stroke="var(--s0)" stroke-width="2"/>${crit}${stLine}${ticks}
+<text x="${m.l+pw/2}" y="${base+32}" text-anchor="middle" style="fill:var(--ink)">Valores del estadístico ${s}</text>
+<rect x="${m.l}" y="${base+40}" width="11" height="11" fill="#c0392b" fill-opacity=".38"/><text x="${m.l+16}" y="${base+50}">Región de rechazo (área = α)</text>
+<text x="${Wd-m.r}" y="${base+50}" text-anchor="end" style="fill:${vc};font-size:12px;font-weight:700">${verdict}</text>
+</svg>`;
+}
+
+/* ---------- los 13 pasos ---------- */
+function finish(sp,S1,S2,alpha,q){
+  const tail=hy.tail,d=sp.dist,r=HM.decide(d,sp.stat,tail,alpha),s=d.s,rej=r.reject,A=g(alpha);
+  const rel={two:'≠',right:'>',left:'<'}[tail],rel0={two:'=',right:'≤',left:'≥'}[tail];
+  const dfTxt=d.type==='z'?'':d.type==='f'?`gl = (${g(d.a)}, ${g(d.b)})`:`gl = ${Number.isInteger(d.a)?d.a:fx(d.a,2)}`;
+  const region=d.sym
+    ?(tail==='two'?`Rechazar H₀ si ${s} < ${fx(r.lo,4)} o ${s} > ${fx(r.hi,4)}`:tail==='right'?`Rechazar H₀ si ${s} > ${fx(r.hi,4)}`:`Rechazar H₀ si ${s} < ${fx(r.lo,4)}`)
+    :(tail==='two'?`Rechazar H₀ si ${s} < ${fx(r.lo,4)} o ${s} > ${fx(r.hi,4)}`:tail==='right'?`Rechazar H₀ si ${s} > ${fx(r.hi,4)}`:`Rechazar H₀ si ${s} < ${fx(r.lo,4)}`);
+  const critTxt2=tail==='two'?(d.sym?`${s} crítico = ±${fx(r.hi,4)}`:`${s} crítico inferior = ${fx(r.lo,4)}; ${s} crítico superior = ${fx(r.hi,4)}`):`${s} crítico = ${fx(tail==='right'?r.hi:r.lo,4)}`;
+  const svg=distSvg(d,sp.stat,r,alpha,tail);
+  const pr=hy.preset?PRESETS.find(x=>x.id===hy.preset):null;
+  const jl=pr&&pr.type===hy.type?[pr.just,...(pr.jf?[{f:pr.jf}]:[])]:[sp.name,...sp.just];
+  const pn=r.p<0.0001?'p < 0.0001':`p = ${pf(r.p,alpha)}`;
+  const cmp=r.p<0.0001?`p < 0.0001 y α = ${A}`:`${pf(r.p,alpha)} ${rej?'<':'≥'} ${A}`;
+  const steps=[
+    {title:'Pregunta de investigación',lines:[q]},
+    {title:'Parámetro poblacional de interés',lines:[`${sp.par.sym}: ${sp.par.words}.`]},
+    {title:'Hipótesis nula y alternativa',lines:[{f:`H₀: ${sp.lhs} ${rel0} ${sp.rhs}`},`H₀: ${sp.h0w}.`,{f:`H₁: ${sp.lhs} ${rel} ${sp.rhs}`},`H₁: ${sp.h1w}.`]},
+    {title:'Tipo de prueba',lines:[tail==='two'?'Bilateral / Dos colas.':tail==='right'?'Unilateral, cola derecha.':'Unilateral, cola izquierda.']},
+    {title:'Nivel de significancia',lines:[`α = ${A}`,`N.C. = ${g(1-alpha)}`]},
+    {title:'Prueba elegida y justificación',lines:jl},
+    {title:'Datos, fórmula y sustitución',lines:[...sp.data,{f:sp.formula},...sp.subst.map(t=>({f:t}))]},
+    {title:'Estadístico de prueba, valor p y valor crítico',lines:[`Estadístico de prueba: ${s} = ${fx(sp.stat,4)}${dfTxt?` (${dfTxt})`:''}`,`Valor ${pn}`,`${critTxt2}`,`Región de rechazo: ${region}.`,`Comparación: ${rej?'valor p < α':'valor p ≥ α'} (${cmp}), por lo tanto ${rej?'se rechaza':'no se rechaza'} H₀.`]},
+    {title:'Gráfica',lines:[],graph:true},
+    {title:'Decisión',lines:[`El estadístico de prueba (${s} = ${fx(sp.stat,4)}) se encuentra ${rej?'dentro de la zona de rechazo, por lo tanto se rechaza':'fuera de la zona de rechazo, por lo tanto no se rechaza'} H₀.`],verdict:rej?'rej':'keep'},
+    {title:'Conclusiones',lines:[`Conclusión estadística: Con un nivel de significancia de ${A}, ${rej?'hay':'no hay'} evidencia estadística suficiente para afirmar que ${sp.h1w}.`,`Conclusión práctica: ${rej?sp.prac.reject:sp.prac.keep}`]},
+    {title:'Error tipo I',lines:[`Rechazar H₀ cuando es verdadera: concluir que ${sp.h1w} cuando en realidad ${sp.h0w}. Probabilidad de cometerlo: α = ${A} (${pcn(alpha)}).`]},
+    {title:'Error tipo II',lines:[`No rechazar H₀ cuando es falsa: concluir que ${sp.h0w} cuando en realidad ${sp.h1w}. Probabilidad de cometerlo: β.`]}
+  ];
+  const dc=hy.preset&&DOC[hy.preset];
+  steps[11].title='Error Tipo I';steps[12].title='Error Tipo II';
+  steps[6].fd={d:sp.data,f:sp.formula,s:sp.subst,dt:(DOC[hy.preset]||{}).dt};
+  if(hy.preset==='p2'&&S2){
+    const n1=S1.data.length,n2=S2.data.length,A1=stats(S1.data),B1=stats(S2.data),u=S1.unit?' '+S1.unit:'',Sp='S<sub>p</sub>';
+    const sp2=((n1-1)*A1.v+(n2-1)*B1.v)/(n1+n2-2),spv=Math.sqrt(sp2),tt=(A1.mean-B1.mean)/(spv*Math.sqrt(1/n1+1/n2));
+    const sq=`√(${fr('1','n₁')} + ${fr('1','n₂')})`,sq2=`√(${fr('1',n1)} + ${fr('1',n2)})`;
+    const L=(x,c)=>`<div class="mx${c?' res':''}">${x}</div>`;
+    steps[6].fd.hf=L(`t<sub>cal</sub> <b>=</b> ${frh('x̄₁ − x̄₂',`${Sp}·${sq}`)}`)+L(`${Sp} <b>=</b> √${Sp}²`)+L(`${Sp}² <b>=</b> ${frh('(n₁ − 1)·s₁² + (n₂ − 1)·s₂²','n₁ + n₂ − 2')}`);
+    steps[6].fd.hs=L(`${Sp}² <b>=</b> ${frh(`(${n1} − 1)·${fx(A1.sd,3)}² + (${n2} − 1)·${fx(B1.sd,3)}²`,`${n1} + ${n2} − 2`)} <b>=</b> ${fx(sp2,3)}${u?u+'²':''}`)+L(`${Sp} <b>=</b> √${fx(sp2,3)} <b>=</b> ${fx(spv,2)}${u}`)+L(`t<sub>cal</sub> <b>=</b> ${frh(`${fx(A1.mean,3)} − ${fx(B1.mean,3)}`,`${fx(spv,2)}·${sq2}`)} <b>=</b> ${fx(tt,3)}`,1);
+    steps[6].fd.hg=welchHtml+`<div class="fb"><div class="mx res">gl <b>=</b> ${fx(d.a,2)}</div></div>`;
+  }
+  const cv=tail==='two'?(d.sym?'±'+fx(r.hi,4):fx(r.lo,4)+' y '+fx(r.hi,4)):fx(tail==='right'?r.hi:r.lo,4);
+  steps[7].cd={k:[['Estadístico '+s+' calculado',fx(sp.stat,4)],...(dfTxt?[['Grados de libertad',dfTxt.replace('gl = ','')]]:[]),['Valor p',r.p<0.0001?'< 0.0001':pf(r.p,alpha)],['Valor crítico '+s,cv],['Nivel de significancia α',A]],reg:region,cmp:`valor p = ${r.p<0.0001?'< 0.0001':pf(r.p,alpha)}  ${rej?'<':'≥'}  α = ${A}`,rej};
+  if(dc){steps[2].lines=[{f:'H₀: '+dc.h0},{f:'H₁: '+dc.h1}];steps[1].lines=dc.pa;steps[9].lines=[dc.dd];steps[9].verdict='';steps[10].lines=['Conclusión Estadística: '+dc.cs,'Conclusión Práctica: '+dc.cp];steps[11].lines=[dc.e1];steps[12].lines=[dc.e2];}
+  const tn=TYPES.find(t=>t.id===hy.type).name;
+  const row={type:hy.type,typeName:tn,test:sp.name,h0:`${sp.lhs} ${rel0} ${sp.rhs}`,h1:`${sp.lhs} ${rel} ${sp.rhs}`,tail,alpha,sname:s,stat:sp.stat,df:dfTxt,p:r.p,reject:rej};
+  if(dc){row.h0=dc.h0;row.h1=dc.h1;}
+  return{ok:true,steps,svg,row,verdict:rej};
+}
+const fr=(n,d)=>`<span class="fr"><span>${esc(n)}</span><span>${esc(d)}</span></span>`;
+const unp=t=>{if(t[0]!=='('||t[t.length-1]!==')')return t;let k=0;for(let i=0;i<t.length;i++){k+=t[i]==='('?1:t[i]===')'?-1:0;if(!k&&i<t.length-1)return t;}return t.slice(1,-1);};
+function mth(t){return t.split(' = ').map(p=>{let k=0,at=-1;for(let i=0;i<p.length-2;i++){k+=p[i]==='('?1:p[i]===')'?-1:0;if(!k&&p.substr(i,3)===' / ')at=i;}return at<0?esc(p):fr(unp(p.slice(0,at)),unp(p.slice(at+3)));}).join(' <b>=</b> ');}
+const fdHtml=f=>`<div class="dg">${f.dt?f.dt.map(([a,b])=>`<div class="dc"><span>${a}</span><b>${b}</b></div>`).join(''):f.d.filter(l=>!/^(Diferencia|Razón) hipotética/.test(l)).map(l=>{const i=l.indexOf(': ');return i<0?`<div class="dc"><span>${esc(l)}</span></div>`:`<div class="dc"><span>${esc(l.slice(0,i))}</span><b>${esc(l.slice(i+2))}</b></div>`;}).join('')}</div>${f.hf?`<div class="fb"><span class="fl">Fórmulas</span>${f.hf}</div><div class="fb"><span class="fl">Sustitución</span>${f.hs}</div>${f.hg}`:`<div class="fb"><span class="fl">Fórmula</span><div class="mx">${mth(f.f)}</div></div><div class="fb"><span class="fl">Sustitución y resultado</span>${f.s.filter(l=>!l.startsWith('Error estándar')).map((l,i,a)=>`<div class="mx${i===a.length-1?' res':''}">${mth(l)}</div>`).join('')}</div>`}`;
+const cdHtml=c=>`<div class="dg">${c.k.map(([a,b],i)=>`<div class="dc"${i===0?' style="border-color:var(--acc)"':''}><span>${esc(a)}</span><b style="font-size:1.25rem">${esc(b)}</b></div>`).join('')}</div><div class="fb"><span class="fl">Región de rechazo</span><div class="mx">${esc(c.reg)}</div></div><div class="fb"><span class="fl">Comparación</span><div class="mx">${esc(c.cmp)} <span class="vd ${c.rej?'rej':'keep'}" style="margin:0">${c.rej?'Se rechaza H₀':'No se rechaza H₀'}</span></div></div>`;
+const frh=(n,d)=>`<span class="fr"><span>${n}</span><span>${d}</span></span>`;
+const welchHtml=`<div class="fb"><span class="fl">Grados de libertad (Welch)</span><div class="mx">gl <b>=</b> ${frh(`(${fr('s₁²','n₁')} + ${fr('s₂²','n₂')})²`,`${frh(`(${fr('s₁²','n₁')})²`,'n₁ − 1')} + ${frh(`(${fr('s₂²','n₂')})²`,'n₂ − 1')}`)}</div></div>`;
+function stepsHtml(o){
+  return`<ol class="steps">${o.steps.map(st=>`<li><b>${esc(st.title)}</b>${st.fd?fdHtml(st.fd):st.cd?cdHtml(st.cd):st.lines.map(l=>typeof l==='string'?(/^Conclusión (Estadística|Práctica):/.test(l)?`<p><b>${esc(l.slice(0,l.indexOf(':')+1))}</b>${esc(l.slice(l.indexOf(':')+1))}</p>`:`<p>${esc(l)}</p>`):l.f.startsWith('gl = (s₁²/n₁')?welchHtml:`<p><span class="fm">${esc(l.f)}</span></p>`).join('')}${st.graph?`<div class="hg">${o.svg}</div>`:''}${st.verdict?`<div class="vd ${st.verdict}">${st.verdict==='rej'?'Se rechaza H₀':'No se rechaza H₀'}</div>`:''}</li>`).join('')}</ol>`;
+}
+
+/* ---------- cálculo y render ---------- */
+function compute(){
+  const two=isTwo(),alpha=parseFloat(hy.alpha);
+  const S1=pick(hy.s1,hy.n1),S2=two?pick(hy.s2,hy.n2):null;
+  const q=hy.qDirty&&hy.q.trim()?hy.q.trim():autoQ(S1,S2);
+  if(!S1||(two&&!S2))return{err:'No hay datos para analizar. Captura tus datos en la pestaña «Estadística descriptiva».',q};
+  if(two&&S1.key===S2.key)return{err:'Elige dos muestras distintas (otro sistema u otro KPI).',q};
+  if(!(alpha>0&&alpha<1))return{err:'Elige un nivel de significancia entre 0 y 1.',q};
+  const sp=buildSpec(S1,S2);if(sp.err)return{err:sp.err,q};
+  const o=finish(sp,S1,S2,alpha,q);o.q=q;return o;
+}
+function result(){}
+const SELOPT=(o,sel)=>o.map(s=>`<option value="${s.key}"${s.key===sel?' selected':''}>${esc(s.kpi)} · ${esc(s.sys)} (N = ${s.data.length})</option>`).join('');
+function fixKeys(){
+  const o=srcs();if(!o.length)return o;
+  if(!o.some(s=>s.key===hy.s1))hy.s1=o[0].key;
+  if(!o.some(s=>s.key===hy.s2)||hy.s2===hy.s1){const a=o.find(s=>s.key===hy.s1),alt=o.find(s=>s.key!==hy.s1&&s.ki===a.ki)||o.find(s=>s.key!==hy.s1);hy.s2=alt?alt.key:hy.s1;}
+  return o;
+}
+function drawForm(){
+  const sel=hy.sel||'all';
+  const card=(id,n,t,sub)=>`<button type="button" class="pk${id===sel?' on':''}" data-sel="${id}" aria-pressed="${id===sel}"><span class="pn">${n}</span><span class="pt">${esc(t)}</span><span class="ps">${esc(sub)}</span></button>`;
+  $('hform').innerHTML=`<h2>Tipo de problema</h2><div class="pg">${card('all','★','Informe completo','Los 6 problemas')}${PRESETS.map((p,i)=>card(p.id,i+1,TYPES.find(t=>t.id===p.type).name,p.label.split(' · ').slice(2).join(' · '))).join('')}</div>${hy.presetMsg?`<p class="err">${esc(hy.presetMsg)}</p>`:''}`;
+}
+function drawSaved(){
+  const el=$('hsaved'),sel=hy.sel||'all';
+  const tbl=`<div class="tw"><table><tr><th>#</th><th>Prueba</th><th>H₀ / H₁</th><th>α</th><th>Estadístico</th><th>Valor p</th><th>Decisión</th></tr>${saved.map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.row.typeName)}</td><td style="text-align:left">${esc(s.row.h0)} / ${esc(s.row.h1)}</td><td>${g(s.row.alpha)}</td><td>${esc(s.row.sname)} = ${fx(s.row.stat,3)}</td><td>${pf(s.row.p,s.row.alpha)}</td><td>${s.row.reject?'Rechazar H₀':'No rechazar H₀'}</td></tr>`).join('')}</table></div>`;
+  const one=saved.find(x=>x.preset===sel),oi=saved.indexOf(one);
+  const det=one?`<div id="d_${one.preset}" style="margin-top:16px"><h2>Problema ${oi+1}: ${esc(one.row.typeName)} · ${one.row.reject?'se rechaza H₀':'no se rechaza H₀'}</h2>${one.html}</div>`:'';
+  el.innerHTML=`<div class="card"><h2>Informe de contrastes (${saved.length} de 6)</h2>${tbl}${det}<div class="row" style="margin:10px 0 0"><button class="b" id="h_pdf"${saved.length?'':' disabled'}>Descargar informe en PDF</button></div><div class="cap" id="hmsg" role="status"></div></div>`;
+}
+function solve(){
+  const keep=Object.assign({},hy),fail=[];saved=[];
+  PRESETS.forEach(p=>{if(!applyPreset(p)){fail.push(p.label);return;}const o=compute();if(!o.ok){fail.push(p.label+' ('+o.err+')');return;}saved.push({id:p.id,preset:p.id,row:o.row,steps:o.steps,svg:o.svg,html:stepsHtml(o)});});
+  Object.assign(hy,keep);hy.presetMsg=fail.length?'No se pudieron resolver: '+fail.join('; ')+'. Revisa los nombres de KPI y sistemas en «Estadística descriptiva».':'';
+}
+function hyRefresh(){solve();drawForm();drawSaved();}
+window.hyRefresh=hyRefresh;
+
+/* ---------- eventos ---------- */
+$('hform').addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-sel]');if(!b)return;hy.sel=b.dataset.sel;drawForm();drawSaved();const d=$('d_'+hy.sel);if(d&&d.scrollIntoView)d.scrollIntoView({behavior:'smooth',block:'start'});});
+$('hres').addEventListener('click',e=>{
+  if(e.target.id!=='h_save'||!last)return;
+  saved.push({id:Date.now()+Math.random(),row:last.row,steps:last.steps,svg:last.svg,html:stepsHtml(last)});
+  persist();drawSaved();confirmDel=false;
+  const m=$('hmsg2');if(m)m.textContent=`Guardado como contraste ${saved.length}. Aparece abajo, en el informe.`;
+});
+$('hsaved').addEventListener('click',e=>{
+  const id=e.target.id,del=e.target.dataset&&e.target.dataset.del;
+  if(del){saved=saved.filter(s=>String(s.id)!==del);persist();confirmDel=false;drawSaved();}
+  else if(id==='h_clear'){if(!confirmDel){confirmDel=true;drawSaved();}else{saved=[];persist();confirmDel=false;drawSaved();}}
+  else if(id==='h_pdf')hyPdf();
+});
+document.addEventListener('click',e=>{if(confirmDel&&e.target.id!=='h_clear'){confirmDel=false;if($('h_clear'))drawSaved();}});
+$('vtabs').addEventListener('click',e=>{
+  const b=e.target.closest('.tab');if(!b)return;
+  const v=b.dataset.v;
+  [...$('vtabs').children].forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+  $('v-desc').hidden=v!=='desc';$('v-hyp').hidden=v!=='hyp';
+  if(v==='hyp')hyRefresh();
+});
+
+/* ---------- PDF del informe ---------- */
+const PM=[[/μ/g,'mu'],[/σ/g,'sigma'],[/α/g,'alfa'],[/β/g,'beta'],[/χ/g,'chi'],[/≠/g,'!='],[/≤/g,'<='],[/≥/g,'>='],[/−/g,'-'],[/[–—]/g,'-'],[/₀/g,'0'],[/₁/g,'1'],[/₂/g,'2'],
+  [/x̄/g,'x-barra'],[/p̂/g,'p^'],[/√/g,'raiz '],[/→/g,'->'],[/✓/g,'(ok)'],[/✗/g,'(no)'],[/⚠/g,'(!)'],[/○/g,'-'],[/…/g,'...'],[/≈/g,'~']];
+const pdfTxt=s=>{let t=String(s);PM.forEach(([a,b])=>{t=t.replace(a,b);});return t.replace(/[^\x00-\xFF]/g,'?');};
+async function hyPdf(){
+  const msg=t=>{const m=$('hmsg');if(m)m.textContent=t;};
+  if(!saved.length){msg('Guarda al menos un contraste.');return;}
+  if(!window.jspdf){msg('No se pudo cargar la librería de PDF.');return;}
+  msg('Generando PDF…');
+  try{
+    const d=new window.jspdf.jsPDF({unit:'pt',format:'letter'}),X=40,CW=532,BOT=748;let y=56;
+    const need=h=>{if(y+h>BOT){d.addPage();y=50;}};
+    const para=(txt,size=10,bold=false,ind=0)=>{d.setFont('helvetica',bold?'bold':'normal');d.setFontSize(size);
+      d.splitTextToSize(pdfTxt(txt),CW-ind).forEach(l=>{need(size*1.4);d.text(l,X+ind,y);y+=size*1.4;});};
+    para('Contraste de hipótesis - Informe de resultados',16,true);y+=2;
+    para(new Date().toLocaleDateString('es-MX'),9);y+=8;
+    para('Resumen de contrastes',12,true);
+    saved.forEach((s,i)=>{const r=s.row;para(`${i+1}. ${r.typeName}: H0: ${r.h0}  vs  H1: ${r.h1}  |  alfa = ${g(r.alpha)}  |  ${r.sname} = ${fx(r.stat,3)}  |  p ${pS(r.p,r.alpha)}  |  ${r.reject?'Rechazar H0':'No rechazar H0'}`,9,false,6);});
+    for(let i=0;i<saved.length;i++){
+      const s=saved[i];d.addPage();y=50;
+      para(`Contraste ${i+1}: ${s.row.typeName}`,14,true);y+=4;
+      for(let k=0;k<s.steps.length;k++){
+        const st=s.steps[k];y+=4;para(`${k+1}. ${st.title}`,10.5,true);
+        st.lines.forEach(l=>para(typeof l==='string'?l:l.f,9.5,false,10));
+        if(st.graph){const hh=400*H/W;need(hh+10);d.addImage(await png(s.svg),'PNG',X+10,y+2,400,hh);y+=hh+10;}
+      }
+    }
+    await dl('informe_contrastes_hipotesis.pdf',d.output('blob'));
+    msg('PDF listo.');
+  }catch(e){msg('No se pudo generar el PDF.');}
+}
+})();
+
 sample();
 </script>
 </body>
 </html>
+
+</body></html>
